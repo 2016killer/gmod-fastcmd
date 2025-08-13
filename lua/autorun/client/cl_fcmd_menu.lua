@@ -15,116 +15,9 @@ end
 -------------------------
 local phrase = language.GetPhrase
 
-local function CreateFileList(panel)
-	local root = 'fastcmd'
-	local flist = vgui.Create('DTree', panel)
-
-	local function trim(str) 
-		return str:gsub('^%s+', ''):gsub('%s+$', '') 
-	end
-
-	local function GetSelectFile()
-		local filename, _ = trim(GetConVar('cl_fcmd_file'):GetString())
-		if filename:match('%.json$') ~= nil then
-			return filename
-		else
-			return ''
-		end
-	end
-
-	flist.UpdateFileList = function(self)
-		timer.Simple(0.5, function()
-			self:Clear()
-			local files = file.Find(root..'/*.json', 'DATA')
-			if #files < 1 then return end
-			local selectfile = GetSelectFile()
-			for _, filename in pairs(files) do
-				local icon 
-				if filename == selectfile then
-					icon = 'icon16/tick.png'
-				else
-					icon = 'icon16/page.png'
-				end
-
-				local node = self:AddNode(filename, icon)	
-				node.filename = filename
-			end
-		end)
-	end
-
-	flist.OnNodeSelected = function(self)
-		-- 双击检查
-		if CurTime() - (self.clicktime or 0) < 0.3 then
-			LocalPlayer():ConCommand('cl_fcmd_file 0')
-			LocalPlayer():ConCommand('cl_fcmd_file '..self.selectfile)
-			self:UpdateFileList()
-		end
-		self.clicktime = CurTime()
-		self.selectfile = self:GetSelectedItem().filename
-	end
-
-	flist:SetHeight(250)
-	flist:UpdateFileList()
-	return flist
-end
-
-local example = [[
-{
-	"3dtransform": {
-		"enable": true
-	},
-	"autoclip": true,
-	"autoedge": true,
-	"edgecolor": {
-		"r": 255,
-		"g": 255,
-		"b": 255,
-		"a": 255
-	},
-
-	"centersize": 0.5,
-	"iconsize": 0.5,
-	"fade": 100,
-	"metadata": [
-		{
-			"call": {
-				"pexecute": "fcmd_example Hello World",
-				"rexecute": "",
-				"sexecute": ""
-			},
-			"style": {
-				"icon": "hud/fastcmd/world.jpeg"
-			}
-		},
-		{
-			"call": {
-				"pexecute": "fcmd_example Hello Garry's Mod",
-				"rexecute": "",
-				"sexecute": ""
-			},
-
-			"style": {
-				"icon": "hud/fastcmd/gmod.jpeg"
-			}
-		},
-		{
-			"call": {
-				"pexecute": "fcmd_example Hello Workshop",
-				"rexecute": "",
-				"sexecute": ""
-			},
-
-			"style": {
-				"icon": "hud/fastcmd/workshop.jpeg"
-			}
-		}
-	]
-}
-
-]]
-
 
 -------------------------菜单
+local filelist
 hook.Add('PopulateToolMenu', 'fastcmd', function()
 	spawnmenu.AddToolMenuOption(
 		'Utilities', 
@@ -156,22 +49,34 @@ hook.Add('PopulateToolMenu', 'fastcmd', function()
 			)
 
 		
-			local filelist = CreateFileList(panel)
-			panel:AddItem(flist)
+			filelist = fcmdu_CreateFileList(panel)
+			filelist:SetHeight(250)
+			panel:AddItem(filelist)
 
 			panel:Button(phrase('fcmd.cmd.open_editor'), '')
 
-			panel:Button(phrase('fcmd.cmd.new'), '')
+			panel:Button(phrase('fcmd.cmd.create'), 'fcmd_create')
 			panel:Button(phrase('fcmd.cmd.saveas'), '')
-
-			
-
-			
 
 			convars = nil
 		end)
 end)
 
+
+cvars.AddChangeCallback('cl_fcmd_file', function(name, old, new) 
+	local succ, err = pcall(fcmd_LoadFcmdDataFromFile, new) 
+	if succ then
+		surface.PlaySound('Weapon_AR2.Reload_Push', 75, 100)
+		if IsValid(filelist) and filelist.UpdateFileList then
+			filelist:UpdateFileList()
+		end
+	else
+		surface.PlaySound('Buttons.snd10', 75, 100)
+		fcmddata = nil
+		Error('fcmd: '..err..'\n')
+		print('检查文件路径或内容')
+	end
+end, 'aaa')
 
 
 

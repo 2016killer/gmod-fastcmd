@@ -28,11 +28,11 @@ local function ExpandUI(state)
 	
 	if state then
 		if isstring(fcmddata.soundexpand) then
-			LocalPlayer():EmitSound(fcmddata.soundexpand)
+			surface.PlaySound(fcmddata.soundexpand)
 		end
 	else
 		if isstring(fcmddata.soundclose) then
-			LocalPlayer():EmitSound(fcmddata.soundclose)
+			surface.PlaySound(fcmddata.soundclose)
 		end
 
 		-- 关闭时更改选中
@@ -41,6 +41,7 @@ local function ExpandUI(state)
 			fcmddata.cache.selectedIdx = selectIdx
 			calldata = fcmddata.metadata[selectIdx].call
 		end
+		fcmddata.cache.selectIdx = nil
 	end
 end
 
@@ -64,28 +65,13 @@ function fcmdm_SetCurrentCallData(target) calldata = target end
 function fcmdm_GetExpand() return expand end
 function fcmdm_SetExpand(target) ExpandUI(target) end
 
-function fcmdm_LoadsFcmdDataFromFile(filename)
-	if filename == '' or filename == '0' or filename == 'empty' then
-		// print('fcmd文件无效')
-		return
-	elseif filename:match('%.json$') == nil then
-		error('必须是json格式')
-	end
-
-	local root = 'fastcmd'
-	local path = root..'/'..filename
-	local json = file.Read(path, 'DATA')	
-	local data = fcmd_LoadsFcmdData(json)
-	fcmddata = data
-end
-
 concommand.Add('+fcmd_expand', function(ply) ExpandUI(true) end)
 concommand.Add('-fcmd_expand', function(ply) ExpandUI(false) end)
 concommand.Add('+fcmd_execute', function(ply) ExecuteSelected(true) end)
 concommand.Add('-fcmd_execute', function(ply) ExecuteSelected(false) end)
 concommand.Add('fcmd_break', function(ply) BreakCmd() end)
 
-concommand.Add('fcmd_example', function(ply, cmd, args) 
+concommand.Add('test_example', function(ply, cmd, args) 
 	local msg = args[1] or 'Hello Workshop'
 	ply:EmitSound('Buttons.snd15')
 	ply:PrintMessage(HUD_PRINTTALK, msg) 
@@ -156,15 +142,15 @@ hook.Add('Think', 'fcmd_think', function()
 		hook.Run('FcmdSelect', fcmddata.metadata[selectIdx])
 		if selectIdx == nil or selectIdx == 0 then
 			if isstring(fcmddata.soundgiveup) then
-				LocalPlayer():EmitSound(fcmddata.soundgiveup)
+				surface.PlaySound(fcmddata.soundgiveup)
 			else
-				LocalPlayer():EmitSound('fastcmd/zoomout.wav')
+				surface.PlaySound('fastcmd/zoomout.wav')
 			end
 		else
 			if isstring(fcmddata.soundselect) then
-				LocalPlayer():EmitSound(fcmddata.soundselect)
+				surface.PlaySound(fcmddata.soundselect)
 			else
-				LocalPlayer():EmitSound('fastcmd/zoomin.wav')
+				surface.PlaySound('fastcmd/zoomin.wav')
 			end
 		end
 	end
@@ -185,17 +171,10 @@ hook.Add('HUDPaint', 'fcmd_draw', function()
 end)
 
 
-cvars.AddChangeCallback('cl_fcmd_file', function(name, old, new) 
-	local succ, err = pcall(fcmdm_LoadsFcmdDataFromFile, new) 
-	if succ then
-		LocalPlayer():EmitSound('Buttons.snd34', 75, 100)
-	else
-		LocalPlayer():EmitSound('Buttons.snd10', 75, 100)
-		fcmddata = nil
-		Error('fcmd: '..err..'\n')
-		print('检查文件路径或内容')
+
+hook.Add('KeyPress', 'fcmd_init', function(ply, key)
+	if key == IN_FORWARD or key == IN_BACK then
+		fcmddata = fcmd_LoadFcmdDataFromFile(cl_fcmd_file:GetString())
+		hook.Remove('KeyPress', 'fcmd_init')
 	end
-end, 'aaa')
-
-pcall(fcmdm_LoadsFcmdDataFromFile, cl_fcmd_file:GetString())
-
+end)

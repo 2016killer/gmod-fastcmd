@@ -2,176 +2,187 @@
 local Background = Color(107, 110, 114, 200)
 
 
-local EditorPanel = {}
+local example = [[
+{
+	"3dtransform": {
+		"enable": true
+	},
+	"autoclip": true,
+	"metadata": [
+		{
+			"call": {
+				"pexecute": "test_example \"Hello World\""
+			},
+			"icon": "hud/fastcmd/world.jpeg"
+		},
+		{
+			"call": {
+				"pexecute": "test_example \"Hello Garry's Mod\""
+			},
+			"icon": "hud/fastcmd/gmod.jpeg"
+		},
+		{
+			"call": {
+				"pexecute": "test_example \"Hello Workshop\""
+			},
+			"icon": "hud/fastcmd/workshop.jpeg"
+		}
+	]
+}
+]]
+
+function fcmdu_CreateFileList(panel)
+	local root = 'fastcmd'
+	local flist = vgui.Create('DTree', panel)
+
+	local function trim(str) 
+		return str:gsub('^%s+', ''):gsub('%s+$', '') 
+	end
+
+	local function GetSelectFile()
+		local filename, _ = trim(GetConVar('cl_fcmd_file'):GetString())
+		if filename:match('%.json$') ~= nil then
+			return filename
+		else
+			return ''
+		end
+	end
+
+	flist.UpdateFileList = function(self)
+		timer.Simple(0.5, function()
+			self:Clear()
+			local files = file.Find(root..'/*.json', 'DATA')
+			if #files < 1 then return end
+			local selectfile = GetSelectFile()
+			for _, filename in pairs(files) do
+				local icon 
+				if filename == selectfile then
+					icon = 'icon16/tick.png'
+				else
+					icon = 'icon16/page.png'
+				end
+
+				local node = self:AddNode(filename, icon)	
+				node.filename = filename
+			end
+		end)
+	end
+
+	flist.OnNodeSelected = function(self)
+		-- 双击检查
+		if CurTime() - (self.clicktime or 0) < 0.3 then
+			LocalPlayer():ConCommand('cl_fcmd_file 0')
+			LocalPlayer():ConCommand('cl_fcmd_file '..self.selectfile)
+			self:UpdateFileList()
+		end
+		self.clicktime = CurTime()
+		self.selectfile = self:GetSelectedItem().filename
+	end
+
+	flist:UpdateFileList()
+	return flist
+end
 
 
-function EditorPanel:Init()
-    self:SetPos(0, 25)
-    local width,height = self:GetSize()
-    local x,label_x = 120,10
-    local y,label_y = 20,23
-    local w,h = 100,20
-    AddMenuText(CMDMENU_TEXT.After_choose[sv_zmlan],label_x,label_y,self)
-    self.acmd = vgui.Create( 'DTextEntry', self )//指令框
-    self.acmd:SetPos(x, y)
-    self.acmd:SetSize( w, h )
-    y,label_y = y + 40,label_y + 40
+local function CreateDialog()
+	local dialog = vgui.Create('DFrame')
+	local w, h = ScrW(), ScrH()
+	
+  
+	dialog:SetTitle('')
+	dialog:SetSize(250, 100)
+	dialog:SetPos(w * 0.5 - 125, h * 0.5 - 50)
+	dialog:SetDraggable(true)
+	dialog:SetVisible(true)
+	dialog:SetSizable(true)
+	dialog:ShowCloseButton(true)
+	dialog:SetDeleteOnClose(true)
 
-    AddMenuText(CMDMENU_TEXT.BorR[sv_zmlan],label_x,label_y,self)
-    self.button = vgui.Create( 'DButton', self )//执行或绑定选择
-    self.button:SetPos(x, y)
-    self.button:SetSize( w, h )
-    self.button:SetText( CMDMENU_TEXT.Run[sv_zmlan] )
-    self.button.run = true
-    self.button.DoClick = function()
-        self.button.run = !self.button.run
-        self.button:SetText( self.button.run and CMDMENU_TEXT.Run[sv_zmlan] or CMDMENU_TEXT.Bind[sv_zmlan] )
-        LocalPlayer():EmitSound(Sound(self.button.run and 'Buttons.snd3' or 'Buttons.snd2'), 75,100) 
+	local textinput = vgui.Create('DTextEntry', dialog)
+	textinput:SetPos(50, 30)
+	textinput:SetSize(150, 20)
+	dialog.textinput = textinput
+
+	local submitbtn = vgui.Create('DButton', dialog)
+	submitbtn:SetPos(50, 60)
+	submitbtn:SetSize(50, 20)
+	submitbtn:SetText('#fcmd.ui.submit')
+	dialog.submitbtn = submitbtn
+
+
+	local canclebtn = vgui.Create('DButton', dialog)
+	canclebtn:SetPos(150, 60)
+	canclebtn:SetSize(50, 20)
+	canclebtn:SetText('#fcmd.ui.cancle')
+    canclebtn.DoClick = function() dialog:Remove() end
+	dialog.canclebtn = canclebtn
+
+	local help = vgui.Create('DLabel', dialog)
+	help:SetPos(210, 30)
+	help:SetSize(500, 20)
+	help:SetText('')
+    help.Error = function(self, text)
+        local errcolor = Color(255, 100, 50)
+        self:SetColor(errcolor)
+        self:SetText(text)
+        dialog:SetWidth(300)
     end
-    y,label_y = y + 40,label_y + 40
+	dialog.help = help
 
-    AddMenuText(CMDMENU_TEXT.icon[sv_zmlan],label_x,label_y,self)
-    self.ctrl = vgui.Create( 'ControlPresets', self )//预设图标
-    self.ctrl:SetPos(x, y)
-    self.ctrl:SetSize( w, h )
-    self.ctrl:SetPreset('1')
-    self.ctrl:AddConVar('cl_cm_path')
-    self.ctrl.OnSelect = function(a,b,index,cmd) 
-        if presetIMG[index] then
-            self.path:SetText(presetIMG[index])    
-        else
-            if istable(cmd) then self.path:SetText(cmd['cl_cm_path'] or '') end 
+    return dialog
+end
+
+concommand.Add('fcmd_create', function()
+    local root = 'fastcmd'
+    local dialog = CreateDialog() 
+    dialog:SetTitle('#fcmd.ui.title.name')
+    dialog:MakePopup()
+    dialog:SetKeyBoardInputEnabled(true)
+
+    
+    dialog.submitbtn.DoClick = function()
+        -- 检查暂停
+        if gui.IsGameUIVisible() then error('暂停时不可用') end
+
+        -- 空名字
+        local name = dialog.textinput:GetText() 
+        if name == '' then
+            dialog.help:Error('#fcmd.ui.err.name_empty')
+            return
         end
-        self.path.Update()
-    end
-    for k, v in pairs(presetIMG) do self.ctrl:AddOption(k) end
-    y,label_y = y + 40,label_y + 40
 
-    AddMenuText(CMDMENU_TEXT.Path[sv_zmlan],label_x,label_y,self)
-    self.path = vgui.Create( 'DTextEntry', self )//图标路径
-    self.path:SetPos(x, y)
-    self.path:SetSize( w, h )
-    self.path.Update = function()
-        local string = self.path:GetText()
-        LocalPlayer():ConCommand('cl_cm_path '..string)
-        if string == '' then string = default_name end
-        self.material:SetImage(string) 
-    end
-    self.path.OnChange = function(self) self.Update() end
-    y,label_y = y + 40,label_y + 40
-
-    self.material = vgui.Create( 'DImage', self )//图标预览
-    self.material:SetPos(65, y)
-    self.material:SetSize( w, w )
-    y,label_y = y + 120,label_y + 120
-
-    self.apply = vgui.Create( 'DButton', self )//应用按钮
-    self.apply:SetPos((width - w)*0.5, y)
-    self.apply:SetSize( w, 2*h )
-    self.apply:SetText( CMDMENU_TEXT.Apply[sv_zmlan] )
-end
-
-function EditorPanel:Paint() 
-    draw.RoundedBox(6, 0, 0, self:GetWide(), self:GetTall(), Background)
-end
-vgui.Register('EditorPanel', EditorPanel, 'DPanel')
-
-local EditorPanel
-local TabFileBrowser
-local function OpenEditor()
-
-    if IsValid(EditorPanel) then EditorPanel:Remove() end
-	if IsValid(TabFileBrowser) then TabFileBrowser:Remove() end
-
-	EditorPanel = vgui.Create('DFrame')
-	EditorPanel:SetPos(50, 25)
-	EditorPanel:SetSize(750, 500)
-
-	EditorPanel:SetMinWidth(700)
-	EditorPanel:SetMinHeight(400)
-
-	EditorPanel:SetSizable(true)
-	EditorPanel:SetDeleteOnClose(false)
-	EditorPanel:SetTitle('Sound Browser')
-	EditorPanel:SetVisible(true)
-
-
-    local BrowserTabs = vgui.Create('DPropertySheet') -- The tabs.
-    BrowserTabs:DockMargin(5, 5, 5, 5)
-    BrowserTabs:AddSheet("File Browser", TabFileBrowser, "icon16/folder.png", false, false, "Browse your sound folder.")
-    // BrowserTabs:AddSheet("Sound Property Browser", TabSoundPropertyList, "icon16/table_gear.png", false, false, "Browse the sound properties.")
-    // BrowserTabs:AddSheet("Favourites", TabFavourites, "icon16/star.png", false, false, "View your favourites.")
-end
-
-
-
-local EditorPanel = {}
-function EditorPanel:Init()
-    self:SetPos(0, 25)
-    local width,height = self:GetSize()
-    local x,label_x = 120,10
-    local y,label_y = 20,23
-    local w,h = 100,20
-    AddMenuText(CMDMENU_TEXT.After_choose[sv_zmlan],label_x,label_y,self)
-    self.acmd = vgui.Create( 'DTextEntry', self )//指令框
-    self.acmd:SetPos(x, y)
-    self.acmd:SetSize( w, h )
-    y,label_y = y + 40,label_y + 40
-
-    AddMenuText(CMDMENU_TEXT.BorR[sv_zmlan],label_x,label_y,self)
-    self.button = vgui.Create( 'DButton', self )//执行或绑定选择
-    self.button:SetPos(x, y)
-    self.button:SetSize( w, h )
-    self.button:SetText( CMDMENU_TEXT.Run[sv_zmlan] )
-    self.button.run = true
-    self.button.DoClick = function()
-        self.button.run = !self.button.run
-        self.button:SetText( self.button.run and CMDMENU_TEXT.Run[sv_zmlan] or CMDMENU_TEXT.Bind[sv_zmlan] )
-        LocalPlayer():EmitSound(Sound(self.button.run and 'Buttons.snd3' or 'Buttons.snd2'), 75,100) 
-    end
-    y,label_y = y + 40,label_y + 40
-
-    AddMenuText(CMDMENU_TEXT.icon[sv_zmlan],label_x,label_y,self)
-    self.ctrl = vgui.Create( 'ControlPresets', self )//预设图标
-    self.ctrl:SetPos(x, y)
-    self.ctrl:SetSize( w, h )
-    self.ctrl:SetPreset('1')
-    self.ctrl:AddConVar('cl_cm_path')
-    self.ctrl.OnSelect = function(a,b,index,cmd) 
-        if presetIMG[index] then
-            self.path:SetText(presetIMG[index])    
+        -- 检查重复
+        name = name..'.json'
+        if file.Exists(root..'/'..name, 'DATA') then
+            dialog.help:Error('#fcmd.ui.err.name_exist')
         else
-            if istable(cmd) then self.path:SetText(cmd['cl_cm_path'] or '') end 
+            file.Write(root..'/'..name, example)
+            LocalPlayer():ConCommand('cl_fcmd_file 0')
+            LocalPlayer():ConCommand('cl_fcmd_file '..name)
+            dialog:Remove()
         end
-        self.path.Update()
+    
     end
-    for k, v in pairs(presetIMG) do self.ctrl:AddOption(k) end
-    y,label_y = y + 40,label_y + 40
+end)
 
-    AddMenuText(CMDMENU_TEXT.Path[sv_zmlan],label_x,label_y,self)
-    self.path = vgui.Create( 'DTextEntry', self )//图标路径
-    self.path:SetPos(x, y)
-    self.path:SetSize( w, h )
-    self.path.Update = function()
-        local string = self.path:GetText()
-        LocalPlayer():ConCommand('cl_cm_path '..string)
-        if string == '' then string = default_name end
-        self.material:SetImage(string) 
-    end
-    self.path.OnChange = function(self) self.Update() end
-    y,label_y = y + 40,label_y + 40
+concommand.Add('fcmd_delete', function(ply, cmd, args)
+    local root = 'fastcmd'
+    local filename = args[1]
+	if filename == '' or filename == '0' or filename == 'empty' then
+		// print('fcmd文件无效')
+		return
+	elseif filename:match('%.json$') == nil then
+		error('必须是json格式')
+	end
 
-    self.material = vgui.Create( 'DImage', self )//图标预览
-    self.material:SetPos(65, y)
-    self.material:SetSize( w, w )
-    y,label_y = y + 120,label_y + 120
+    sound.Play('Buttons.snd34', LocalPlayer():GetPos(), 75, 100)
 
-    self.apply = vgui.Create( 'DButton', self )//应用按钮
-    self.apply:SetPos((width - w)*0.5, y)
-    self.apply:SetSize( w, 2*h )
-    self.apply:SetText( CMDMENU_TEXT.Apply[sv_zmlan] )
-end
+	if filename == '' or filename == '0' or filename == 'empty' then
+		// print('fcmd文件无效')
+		return
+	elseif filename:match('%.json$') == nil then
+		error('必须是json格式')
+	end
 
-function EditorPanel:Paint() 
-    draw.RoundedBox(6, 0, 0, self:GetWide(), self:GetTall(), Background)
-end
+    file.Delete(root..'/'..filename, 'DATA')
+end)

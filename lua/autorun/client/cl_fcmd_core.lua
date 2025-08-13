@@ -14,12 +14,32 @@ local arrowdefault = Material('hud/fastcmd/arrow.png')
 local icondefault = Material('hud/fastcmd/default.png')
 local circlemask = Material('hud/fastcmd/circlemask')
 local edge = Material('hud/fastcmd/edge.png')
+local edgecolordefault = {r = 255, g = 255, b = 255, a = 255}
+local transform3ddefault = {enable = true, ang = 10, depth = 700}
 
+
+local function trim(str) 
+	return str:gsub('^%s+', ''):gsub('%s+$', '') 
+end
 
 local function Elasticity(x)
 	if x >= 1 then return 1 end
 	return x * 1.4301676 + math.sin(x * 4.0212386) * 0.55866
 end
+
+function fcmd_ErrorNoHalt(text)
+	notification.AddLegacy(text, NOTIFY_ERROR, 5)
+	surface.PlaySound('Buttons.snd10')
+end
+
+function fcmd_Warning(text)
+	notification.AddLegacy(text, NOTIFY_GENERIC, 5)
+	surface.PlaySound('Buttons.snd8')
+end
+
+local FastError = fcmd_ErrorNoHalt
+local FastWarning = fcmd_Warning
+
 
 function fcmd_DrawHud2D(size, fcmddata, state, debug)
 	-- 绘制 HUD
@@ -51,9 +71,10 @@ function fcmd_DrawHud2D(size, fcmddata, state, debug)
 	surface.DrawTexturedRectRotated(cx, cy, centersize, centersize, 0)
 
 	-- 箭头图标绘制
-	if fcmddata.active then
+	if rootcache.selectIdx ~= nil then
+		local mouseang = (atan2(y - cy, x - cx) + halfpi) * radunit
 		surface.SetMaterial(rootcache.arrow)
-		surface.DrawTexturedRectRotated(cx, cx, centersize, centersize, 0)
+		surface.DrawTexturedRectRotated(cx, cy, centersize, centersize, -mouseang)
 	end
 
 	---- 指令图标绘制
@@ -73,7 +94,7 @@ function fcmd_DrawHud2D(size, fcmddata, state, debug)
 		surface.SetMaterial(circlemask)
 
 		render.OverrideColorWriteEnable(true, false)
-		for i, data in pairs(fcmddata.metadata) do	 
+		for i, data in ipairs(fcmddata.metadata) do	 
 			local cache = data.cache
 			local lpos = size * cache.dir * (0.5 + cache.addlen * 0.1)
 
@@ -88,7 +109,7 @@ function fcmd_DrawHud2D(size, fcmddata, state, debug)
 	end
 
 
-	for i, data in pairs(fcmddata.metadata) do	 
+	for i, data in ipairs(fcmddata.metadata) do	 
 		local cache = data.cache
 		-- 为选择的图标添加附加距离
 		if rootcache.selectIdx == i then
@@ -106,11 +127,12 @@ function fcmd_DrawHud2D(size, fcmddata, state, debug)
 
 	-- 绘制边缘
 	if fcmddata.autoclip then 
+		local color = rootcache.edgecolor
 		render.SetStencilEnable(false)
-		surface.SetDrawColor(255, 255, 255, 255)
+		surface.SetDrawColor(color.r, color.g, color.b, color.a)
 		surface.SetMaterial(edge)
 
-		for i, data in pairs(fcmddata.metadata) do	 
+		for i, data in ipairs(fcmddata.metadata) do	 
 			local cache = data.cache
 			local lpos = size * cache.dir * (0.5 + cache.addlen * 0.1)
 
@@ -124,7 +146,7 @@ function fcmd_DrawHud2D(size, fcmddata, state, debug)
 	if debug then
 		surface.DrawCircle(cx, cy, size * 0.5, 255, 255, 255, 255)
 		surface.DrawCircle(cx, cy, centersize * 0.5, 255, 255, 255, 255)
-		for i, data in pairs(fcmddata.metadata) do	 
+		for i, data in ipairs(fcmddata.metadata) do	 
 			local cache = data.cache
 			cache.addlen = rootcache.selectIdx == i and 1 or 0
 			local lpos = size * cache.dir * (0.5 + cache.addlen * 0.1)
@@ -144,7 +166,7 @@ function fcmd_CheckSelect(size, fcmddata)
 
 	-- 使用叉积计算碰撞
 	local rootcache = fcmddata.cache
-	for i, data in pairs(fcmddata.metadata) do
+	for i, data in ipairs(fcmddata.metadata) do
 		local bounds = data.cache.bounds
 		local crossleft, crossright = mousedir:Cross(bounds[1]).z, mousedir:Cross(bounds[2]).z
 		if crossleft < 0 and crossright > 0 then
@@ -156,12 +178,22 @@ function fcmd_CheckSelect(size, fcmddata)
 end
 
 function fcmd_LoadsFcmdData(json)
-	-- 加载数据
+	-- 加载数据并验证
 	local fcmddata = util.JSONToTable(json)
+	if not istable(fcmddata) then 
+		FastError('#fcmd.err.loads.not_json')
+		return nil
+	else
+		-- 自动修复metadata
+		if not istable(fcmddata.metadata) then
+			FastWarning('#fcmd.warn.loads.loss_metadata')
+			fcmddata.metadata = {}
+		end
+	end
 
+	---- 计算缓存
 	local rootcache = {
 		selectIdx = nil, -- 选中的索引
-		active = false -- 当鼠标在中心图标范围时为false
 	}
 	fcmddata.cache = rootcache
 
@@ -177,19 +209,38 @@ function fcmd_LoadsFcmdData(json)
 		rootcache.arrow = arrowdefault
 	end
 
-	-- 变量边界和角度边界大小
+	---- 变量边界
+
+	-- 比例、角度边界大小
 	local angbound = min(
-		twopi / #fcmddata.metadata * max(fcmddata.iconsize, 0), 
+		twopi / #fcmddata.metadata * max(fcmddata.iconsize or 0.5, 0), 
 		ang_120
 	)
 
-	rootcache.fade = max(fcmddata.fade, 0)
-	rootcache.centersize = max(fcmddata.centersize, 0)
+	rootcache.fade = max(fcmddata.fade or 100, 0)
+	rootcache.centersize = max(fcmddata.centersize or 0.5, 0)
 	rootcache.iconsize = sin(angbound * 0.25) * 2
+
+	-- 边缘颜色参数
+	rootcache.edgecolor = istable(fcmddata.edgecolor) and fcmddata.edgecolor or edgecolordefault
+	rootcache.edgecolor.r = Clamp(rootcache.edgecolor.r or 0, 0, 255) 
+	rootcache.edgecolor.g = Clamp(rootcache.edgecolor.g or 0, 0, 255) 
+	rootcache.edgecolor.b = Clamp(rootcache.edgecolor.b or 0, 0, 255) 
+	rootcache.edgecolor.a = Clamp(rootcache.edgecolor.a or 255, 0, 255) 
+
+	-- 3D变换参数
+	rootcache.transform3d = istable(fcmddata['3dtransform']) and fcmddata['3dtransform'] or transform3ddefault
+	rootcache.transform3d.ang = rootcache.transform3d.ang or 10
+	rootcache.transform3d.depth = rootcache.transform3d.depth or 700
 
 	-- 生成位置、加载材质
 	local step = twopi / #fcmddata.metadata
 	for i, data in pairs(fcmddata.metadata) do 
+		if not isnumber(variable) then
+			FastWarning('#fcmd.warn.loads.invalid_idx')
+			continue
+		end
+
 		local ang = -halfpi + (i - 1) * step
 		local angleft = ang - 0.5 * angbound
 		local angright = ang + 0.5 * angbound
@@ -203,9 +254,9 @@ function fcmd_LoadsFcmdData(json)
 			}
 		}
 
-		local style = data.style
-		if isstring(style.icon) and style.icon ~= '' then
-			nodecache.icon = Material(style.icon)
+		local icon = data.icon
+		if isstring(icon) and icon ~= '' then
+			nodecache.icon = Material(icon)
 		else
 			nodecache.icon = icondefault
 		end
@@ -218,6 +269,73 @@ end
 
 function fcmd_DumpsFcmdData(fcmddata)
 	-- 序列化数据
+	if not istable(fcmddata) then
+		FastError('#fcmd.err.dumps.not_table')
+		return nil
+	end
+
+	fcmddata.cache = nil
+	if istable(fcmddata.metadata) then
+		for _, data in pairs(fcmddata.metadata) do
+			data.cache = nil
+		end
+	end
+
+	return util.TableToJSON(fcmddata, true)
+end
+
+function fcmd_LoadFcmdDataFromFile(filename)
+	-- 从文件中获取fcmddata
+
+	-- 是否为字符串
+	if not isstring(filename) then  
+		FastError('#fcmd.err.file.not_string')
+		return nil
+	end
+
+	filename = trim(filename)
+	local root = 'fastcmd'
+	local path = root..'/'..filename..'.json'
+	-- 存在性、格式过滤等
+	if filename == '' or filename == '0' then
+		-- 在设计中, 切换玩家当前的fcmddata依赖参数变化的函数, 所以重载前需要先清空
+		-- 所以这里不视为错误
+		return nil
+	elseif not file.Exists(path, 'DATA') then
+		FastError('#fcmd.err.file.not_exist')
+		return nil
+	end
+
+	local json = file.Read(path, 'DATA')	
+	return fcmd_LoadsFcmdData(json)
+end
+
+function fcmd_SaveFcmdDataToFile(fcmddata, filename, override)
+	-- 保存fcmddata文件
+
+	-- 是否为字符串
+	if not isstring(filename) then  
+		FastError('#fcmd.err.save.not_string')
+		return false
+	end
+
+	filename = trim(filename)
+	local root = 'fastcmd'
+	local path = root..'/'..filename..'.json'
+
+	-- 存在性、格式过滤等
+	if filename == '' or filename == '0' then
+		FastError('#fcmd.err.save.empty')
+		return false
+	elseif not override and file.Exists(path, 'DATA') then
+		FastError('#fcmd.err.save.exist')
+		return false
+	end
+
+	local json = fcmd_DumpsFcmdData(fcmddata)
+	file.Write(path, json)
+
+	return true
 end
 
 function fcmd_CmdFilter(cmd)
@@ -271,14 +389,12 @@ function fcmd_Execute(call, press)
 	end
 end
 
-
 function fcmd_Break(cmd)
 	-- 执行中断指令
 	// print('fcmd_Break', cmd)
 	if not isstring(cmd) then return end
 	LocalPlayer():ConCommand(CmdFilter(cmd))
 end
-
 
 local DrawHud2D = fcmd_DrawHud2D
 local startmartix = Matrix()
@@ -287,15 +403,14 @@ local startmartix = Matrix()
 local zerovec, zeroang = Vector(), Angle()
 function fcmd_DrawHud(size, fcmddata, state, debug)
 	-- 绘制 HUD
-
-	local transform3d = fcmddata['3dtransform']
-	if istable(transform3d) and transform3d.enable then
+	local rootcache = fcmddata.cache 
+	local transform3d = rootcache.transform3d
+	if transform3d.enable then
 		state = max(state, 0)
 		local w, h = ScrW(), ScrH()
 		local cx, cy = w * 0.5, h * 0.5
 		
-		local rootcache = fcmddata.cache 
-		local ang, depth = (transform3d.ang or 10) / radunit, transform3d.depth or 700
+		local ang, depth = transform3d.ang / radunit, transform3d.depth
 		-- 计算变换矩阵
 		-- 这个Start3D2D用不明白, 只能用两次旋转合成了
 		local cammartix
@@ -321,6 +436,7 @@ function fcmd_DrawHud(size, fcmddata, state, debug)
 		surface.SetDrawColor(0, 0, 0, fade * state)
 		surface.DrawRect(0, 0, w, h)
 
+		local old = DisableClipping(true)
 		rootcache.fade = 0 -- 禁用2D的淡入绘制
 		
 		cam.Start3D(campos, camang)
@@ -330,6 +446,7 @@ function fcmd_DrawHud(size, fcmddata, state, debug)
 		cam.End3D()
 
 		rootcache.fade = fade -- 恢复数据
+		DisableClipping(old)
 	else
 		DrawHud2D(size, fcmddata, state, debug)
 	end
