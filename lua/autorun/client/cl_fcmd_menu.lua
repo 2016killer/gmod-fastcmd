@@ -62,19 +62,13 @@ hook.Add('PopulateToolMenu', 'fastcmd', function()
 		end)
 end)
 
-
 cvars.AddChangeCallback('cl_fcmd_file', function(name, old, new) 
-	local succ, err = pcall(fcmd_LoadFcmdDataFromFile, new) 
-	if succ then
-		surface.PlaySound('Weapon_AR2.Reload_Push', 75, 100)
-		if IsValid(filelist) and filelist.UpdateFileList then
-			filelist:UpdateFileList()
-		end
-	else
-		surface.PlaySound('Buttons.snd10', 75, 100)
-		fcmddata = nil
-		Error('fcmd: '..err..'\n')
-		print('检查文件路径或内容')
+	local newdata = fcmd_LoadFcmdDataFromFile(new)
+	if istable(newdata) then surface.PlaySound('Weapon_AR2.Reload_Push') end
+	fcmdm_SetCurrentFcmdData(fcmd_LoadFcmdDataFromFile(new))
+	fcmdm_SetCurrentCallData(nil)
+	if IsValid(filelist) and filelist.UpdateFileList then
+		filelist:UpdateFileList()
 	end
 end, 'aaa')
 

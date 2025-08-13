@@ -1,59 +1,22 @@
 
-local Background = Color(107, 110, 114, 200)
+include('cl_fcmd_core.lua')
+local rootpath = 'fastcmd'
+local FastError = fcmd_FastError
+local FastWarning = fcmd_FastWarning
 
-
-local example = [[
-{
-	"3dtransform": {
-		"enable": true
-	},
-	"autoclip": true,
-	"metadata": [
-		{
-			"call": {
-				"pexecute": "test_example \"Hello World\""
-			},
-			"icon": "hud/fastcmd/world.jpeg"
-		},
-		{
-			"call": {
-				"pexecute": "test_example \"Hello Garry's Mod\""
-			},
-			"icon": "hud/fastcmd/gmod.jpeg"
-		},
-		{
-			"call": {
-				"pexecute": "test_example \"Hello Workshop\""
-			},
-			"icon": "hud/fastcmd/workshop.jpeg"
-		}
-	]
-}
-]]
 
 function fcmdu_CreateFileList(panel)
-	local root = 'fastcmd'
+	
 	local flist = vgui.Create('DTree', panel)
-
-	local function trim(str) 
-		return str:gsub('^%s+', ''):gsub('%s+$', '') 
-	end
-
-	local function GetSelectFile()
-		local filename, _ = trim(GetConVar('cl_fcmd_file'):GetString())
-		if filename:match('%.json$') ~= nil then
-			return filename
-		else
-			return ''
-		end
-	end
 
 	flist.UpdateFileList = function(self)
 		timer.Simple(0.5, function()
 			self:Clear()
-			local files = file.Find(root..'/*.json', 'DATA')
+
+			local files = file.Find(rootpath..'/*.json', 'DATA')
 			if #files < 1 then return end
-			local selectfile = GetSelectFile()
+
+			local selectfile = GetConVar('cl_fcmd_file'):GetString()..'.json'
 			for _, filename in pairs(files) do
 				local icon 
 				if filename == selectfile then
@@ -76,7 +39,7 @@ function fcmdu_CreateFileList(panel)
 			self:UpdateFileList()
 		end
 		self.clicktime = CurTime()
-		self.selectfile = self:GetSelectedItem().filename
+		self.selectfile = string.sub(self:GetSelectedItem().filename, 1, -6)
 	end
 
 	flist:UpdateFileList()
@@ -117,56 +80,27 @@ local function CreateDialog()
     canclebtn.DoClick = function() dialog:Remove() end
 	dialog.canclebtn = canclebtn
 
-	local help = vgui.Create('DLabel', dialog)
-	help:SetPos(210, 30)
-	help:SetSize(500, 20)
-	help:SetText('')
-    help.Error = function(self, text)
-        local errcolor = Color(255, 100, 50)
-        self:SetColor(errcolor)
-        self:SetText(text)
-        dialog:SetWidth(300)
-    end
-	dialog.help = help
-
     return dialog
 end
 
 concommand.Add('fcmd_create', function()
-    local root = 'fastcmd'
     local dialog = CreateDialog() 
     dialog:SetTitle('#fcmd.ui.title.name')
     dialog:MakePopup()
     dialog:SetKeyBoardInputEnabled(true)
 
-    
     dialog.submitbtn.DoClick = function()
-        -- 检查暂停
-        if gui.IsGameUIVisible() then error('暂停时不可用') end
-
-        -- 空名字
-        local name = dialog.textinput:GetText() 
-        if name == '' then
-            dialog.help:Error('#fcmd.ui.err.name_empty')
-            return
-        end
-
-        -- 检查重复
-        name = name..'.json'
-        if file.Exists(root..'/'..name, 'DATA') then
-            dialog.help:Error('#fcmd.ui.err.name_exist')
-        else
-            file.Write(root..'/'..name, example)
-            LocalPlayer():ConCommand('cl_fcmd_file 0')
-            LocalPlayer():ConCommand('cl_fcmd_file '..name)
-            dialog:Remove()
-        end
-    
+		local filename = dialog.textinput:GetText()
+		local succ = fcmd_CreateFcmdDataFile(filename)
+		if succ then
+			LocalPlayer():ConCommand('cl_fcmd_file 0')
+            LocalPlayer():ConCommand('cl_fcmd_file '..filename)
+			dialog:Remove()
+		end
     end
 end)
 
 concommand.Add('fcmd_delete', function(ply, cmd, args)
-    local root = 'fastcmd'
     local filename = args[1]
 	if filename == '' or filename == '0' or filename == 'empty' then
 		// print('fcmd文件无效')
@@ -184,5 +118,5 @@ concommand.Add('fcmd_delete', function(ply, cmd, args)
 		error('必须是json格式')
 	end
 
-    file.Delete(root..'/'..filename, 'DATA')
+    file.Delete(rootpath..'/'..filename, 'DATA')
 end)

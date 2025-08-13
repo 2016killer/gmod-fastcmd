@@ -5,6 +5,9 @@ local Execute = fcmd_Execute
 local Break = fcmd_Break
 local DrawHud = fcmd_DrawHud
 local CheckSelect = fcmd_CheckSelect
+local pcall = pcall
+local ErrorNoHaltWithStack = ErrorNoHaltWithStack
+local FastError = fcmd_FastError
 -----------------------------
 local fcmddata
 local function BreakCmd()
@@ -167,14 +170,26 @@ hook.Add('HUDPaint', 'fcmd_draw', function()
 	if expandstate == 0 then 
 		return 
 	end
-	fcmd_DrawHud(cl_fcmd_menu_size:GetInt(), fcmddata, expandstate)
-end)
+	
+	-- 使用多个全局渲染设置, 异常时必须着重处理
+	local succ, err = pcall(DrawHud, cl_fcmd_menu_size:GetInt(), fcmddata, expandstate)
+	if not succ then
+		ErrorNoHaltWithStack(err)
+		FastError('#fcmd.err.render')
 
+		render.ClearStencil()
+		render.SetStencilEnable(false)
+		render.OverrideColorWriteEnable(false)
+
+		hook.Remove('HUDPaint', 'fcmd_draw')
+	end
+end)
 
 
 hook.Add('KeyPress', 'fcmd_init', function(ply, key)
 	if key == IN_FORWARD or key == IN_BACK then
 		fcmddata = fcmd_LoadFcmdDataFromFile(cl_fcmd_file:GetString())
+		if istable(fcmddata) then surface.PlaySound('Weapon_AR2.Reload_Push') end
 		hook.Remove('KeyPress', 'fcmd_init')
 	end
 end)

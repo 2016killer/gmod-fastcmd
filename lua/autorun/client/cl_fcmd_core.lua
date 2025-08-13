@@ -9,6 +9,7 @@ local surface = surface
 local RealFrameTime = RealFrameTime
 local Vector = Vector
 
+local rootpath = 'fastcmd' -- 数据根目录
 local cicondefault = Material('hud/fastcmd/cicon.png')
 local arrowdefault = Material('hud/fastcmd/arrow.png')
 local icondefault = Material('hud/fastcmd/default.png')
@@ -27,18 +28,18 @@ local function Elasticity(x)
 	return x * 1.4301676 + math.sin(x * 4.0212386) * 0.55866
 end
 
-function fcmd_ErrorNoHalt(text)
+function fcmd_FastError(text)
 	notification.AddLegacy(text, NOTIFY_ERROR, 5)
 	surface.PlaySound('Buttons.snd10')
 end
 
-function fcmd_Warning(text)
+function fcmd_FastWarning(text)
 	notification.AddLegacy(text, NOTIFY_GENERIC, 5)
 	surface.PlaySound('Buttons.snd8')
 end
 
-local FastError = fcmd_ErrorNoHalt
-local FastWarning = fcmd_Warning
+local FastError = fcmd_FastError
+local FastWarning = fcmd_FastWarning
 
 
 function fcmd_DrawHud2D(size, fcmddata, state, debug)
@@ -236,9 +237,14 @@ function fcmd_LoadsFcmdData(json)
 	-- 生成位置、加载材质
 	local step = twopi / #fcmddata.metadata
 	for i, data in pairs(fcmddata.metadata) do 
-		if not isnumber(variable) then
+		-- 元数据检测并修复
+		// if true then continue end
+		if not istable(data) then
+			FastWarning('#fcmd.warn.loads.invalid_element')
+			fcmddata.metadata[i] = {}
+		end
+		if not isnumber(i) then
 			FastWarning('#fcmd.warn.loads.invalid_idx')
-			continue
 		end
 
 		local ang = -halfpi + (i - 1) * step
@@ -294,8 +300,7 @@ function fcmd_LoadFcmdDataFromFile(filename)
 	end
 
 	filename = trim(filename)
-	local root = 'fastcmd'
-	local path = root..'/'..filename..'.json'
+	local path = rootpath..'/'..filename..'.json'
 	-- 存在性、格式过滤等
 	if filename == '' or filename == '0' then
 		-- 在设计中, 切换玩家当前的fcmddata依赖参数变化的函数, 所以重载前需要先清空
@@ -320,8 +325,7 @@ function fcmd_SaveFcmdDataToFile(fcmddata, filename, override)
 	end
 
 	filename = trim(filename)
-	local root = 'fastcmd'
-	local path = root..'/'..filename..'.json'
+	local path = rootpath..'/'..filename..'.json'
 
 	-- 存在性、格式过滤等
 	if filename == '' or filename == '0' then
@@ -450,4 +454,61 @@ function fcmd_DrawHud(size, fcmddata, state, debug)
 	else
 		DrawHud2D(size, fcmddata, state, debug)
 	end
+end
+
+
+function fcmd_CreateFcmdDataFile(filename)
+	-- 新建fcmddata文件
+
+	-- 检查暂停
+	if gui.IsGameUIVisible() then 
+		FastError('#fcmd.err.create.pause')
+		return false
+	end
+
+	-- 是否为字符串
+	if not isstring(filename) then  
+		FastError('#fcmd.err.create.not_string')
+		return false
+	end
+
+	filename = trim(filename)
+	local path = rootpath..'/'..filename..'.json'
+
+	-- 空名字、存在性检查
+	if filename == '' or filename == '0' then
+		FastError('#fcmd.err.create.empty')
+		return false
+	elseif file.Exists(path, 'DATA') then
+		FastError('#fcmd.err.create.exist')
+		return false
+	end
+
+	file.Write(path, [[
+{
+	"autoclip": true,
+	"metadata": [
+		{
+			"call": {
+				"pexecute": "test_example \"Hello World\""
+			},
+			"icon": "hud/fastcmd/world.jpeg"
+		},
+		{
+			"call": {
+				"pexecute": "test_example \"Hello Garry's Mod\""
+			},
+			"icon": "hud/fastcmd/gmod.jpeg"
+		},
+		{
+			"call": {
+				"pexecute": "test_example \"Hello Workshop\""
+			},
+			"icon": "hud/fastcmd/workshop.jpeg"
+		}
+	]
+}
+	]])
+
+	return true
 end
