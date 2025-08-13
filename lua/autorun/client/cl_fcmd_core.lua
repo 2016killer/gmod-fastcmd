@@ -295,7 +295,7 @@ function fcmd_DrawHud(size, fcmddata, state, debug)
 		local cx, cy = w * 0.5, h * 0.5
 		
 		local rootcache = fcmddata.cache 
-		local ang, depth = (transform3d.ang or 15) / radunit, transform3d.depth or 500
+		local ang, depth = (transform3d.ang or 10) / radunit, transform3d.depth or 700
 		-- 计算变换矩阵
 		-- 这个Start3D2D用不明白, 只能用两次旋转合成了
 		local cammartix

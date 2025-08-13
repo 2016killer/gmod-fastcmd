@@ -1,47 +1,22 @@
-include('cl_fcmd_main.lua')
 
-local phrase = language.GetPhrase
 
 local convars = {
 	cl_fcmd_menu_size = 500,
 	cl_fcmd_expand_key = 0,
 	cl_fcmd_execute_key = 0,
 	cl_fcmd_break_key = 0,
+	cl_fcmd_file = ''
 }
 
 for k, v in pairs(convars) do
 	CreateClientConVar(k, tostring(v), true, false)
 end
 
-CreateClientConVar('cl_fcmd_menu_size', '500', true, false)
-
-CreateClientConVar('cl_fcmd_expand_key', '0', true, false)
-CreateClientConVar('cl_fcmd_execute_key', '0', true, false)
-CreateClientConVar('cl_fcmd_break_key', '0', true, false)
-CreateClientConVar('cl_fcmd_file', '', true, false)
 -------------------------
-local root = 'fastcmd'
-
-cvars.AddChangeCallback('cl_fcmd_file', function(name, old, new)
-	local json = file.Read(root..'/'..new, 'DATA')	
-
-	local succ, err = pcall(function()
-		fcmdm_SetCurrentFcmdData(fcmd_LoadsFcmdData(json))
-	end)
-
-	if succ then
-		LocalPlayer():EmitSound('Buttons.snd34', 75, 100)	
-	else
-		LocalPlayer():EmitSound('Buttons.snd10', 75, 100)
-		print('fcmd: '..json..'\n')
-		Error('err: '..err..'\n')
-	end
-end)
-
-
+local phrase = language.GetPhrase
 
 local function CreateFileList(panel)
-	
+	local root = 'fastcmd'
 	local flist = vgui.Create('DTree', panel)
 
 	local function trim(str) 
@@ -49,43 +24,39 @@ local function CreateFileList(panel)
 	end
 
 	local function GetSelectFile()
-		local file, _ = trim(GetConVar('cl_fcmd_file'):GetString())
-		if file:match('%.json$') ~= nil then
-			return file
+		local filename, _ = trim(GetConVar('cl_fcmd_file'):GetString())
+		if filename:match('%.json$') ~= nil then
+			return filename
 		else
 			return ''
 		end
 	end
 
 	flist.UpdateFileList = function(self)
-		self:Clear()
-		local files = file.Find(root..'/*.json', 'DATA')
-		if #files < 1 then return end
-		local selectfile = GetSelectFile()
-		for _, filename in pairs(files) do
-			local icon 
-			if filename == selectfile then
-				icon = 'icon16/tick.png'
-			else
-				icon = 'icon16/page.png'
-			end
+		timer.Simple(0.5, function()
+			self:Clear()
+			local files = file.Find(root..'/*.json', 'DATA')
+			if #files < 1 then return end
+			local selectfile = GetSelectFile()
+			for _, filename in pairs(files) do
+				local icon 
+				if filename == selectfile then
+					icon = 'icon16/tick.png'
+				else
+					icon = 'icon16/page.png'
+				end
 
-			local node = self:AddNode(filename, icon)	
-			node.filename = filename
-		end
+				local node = self:AddNode(filename, icon)	
+				node.filename = filename
+			end
+		end)
 	end
 
 	flist.OnNodeSelected = function(self)
 		-- 双击检查
-		if CurTime() - self.clicktime < 0.3 then
-			
-			if data then
-				LocalPlayer():EmitSound('Buttons.snd34', 75, 100)	
-				LocalPlayer():ConCommand('cl_fcmd_file '..self.selectfile)
-			else
-				LocalPlayer():EmitSound('Buttons.snd10', 75, 100)
-				LocalPlayer():ConCommand('cl_fcmd_file empty')		
-			end
+		if CurTime() - (self.clicktime or 0) < 0.3 then
+			LocalPlayer():ConCommand('cl_fcmd_file 0')
+			LocalPlayer():ConCommand('cl_fcmd_file '..self.selectfile)
 			self:UpdateFileList()
 		end
 		self.clicktime = CurTime()
@@ -93,12 +64,67 @@ local function CreateFileList(panel)
 	end
 
 	flist:SetHeight(250)
-	panel:AddItem(flist)
 	flist:UpdateFileList()
 	return flist
 end
 
--- 菜单界面
+local example = [[
+{
+	"3dtransform": {
+		"enable": true
+	},
+	"autoclip": true,
+	"autoedge": true,
+	"edgecolor": {
+		"r": 255,
+		"g": 255,
+		"b": 255,
+		"a": 255
+	},
+
+	"centersize": 0.5,
+	"iconsize": 0.5,
+	"fade": 100,
+	"metadata": [
+		{
+			"call": {
+				"pexecute": "fcmd_example Hello World",
+				"rexecute": "",
+				"sexecute": ""
+			},
+			"style": {
+				"icon": "hud/fastcmd/world.jpeg"
+			}
+		},
+		{
+			"call": {
+				"pexecute": "fcmd_example Hello Garry's Mod",
+				"rexecute": "",
+				"sexecute": ""
+			},
+
+			"style": {
+				"icon": "hud/fastcmd/gmod.jpeg"
+			}
+		},
+		{
+			"call": {
+				"pexecute": "fcmd_example Hello Workshop",
+				"rexecute": "",
+				"sexecute": ""
+			},
+
+			"style": {
+				"icon": "hud/fastcmd/workshop.jpeg"
+			}
+		}
+	]
+}
+
+]]
+
+
+-------------------------菜单
 hook.Add('PopulateToolMenu', 'fastcmd', function()
 	spawnmenu.AddToolMenuOption(
 		'Utilities', 
@@ -129,16 +155,22 @@ hook.Add('PopulateToolMenu', 'fastcmd', function()
 				'cl_fcmd_break_key'
 			)
 
+		
 			local filelist = CreateFileList(panel)
+			panel:AddItem(flist)
 
+			panel:Button(phrase('fcmd.cmd.open_editor'), '')
 
-			panel:Button(phrase('fcmd.cmd.open_editor'), '' )
+			panel:Button(phrase('fcmd.cmd.new'), '')
+			panel:Button(phrase('fcmd.cmd.saveas'), '')
+
+			
+
+			
 
 			convars = nil
 		end)
 end)
-
-
 
 
 
