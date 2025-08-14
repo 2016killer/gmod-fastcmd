@@ -31,11 +31,11 @@ local function ExpandUI(state)
 	expand = state
 	
 	if state then
-		if isstring(fcmddata.soundexpand) then
+		if isstring(fcmddata.soundexpand) and fcmddata.soundexpand ~= '' then
 			surface.PlaySound(fcmddata.soundexpand)
 		end
 	else
-		if isstring(fcmddata.soundclose) then
+		if isstring(fcmddata.soundclose) and fcmddata.soundclose ~= '' then
 			surface.PlaySound(fcmddata.soundclose)
 		end
 
@@ -148,13 +148,13 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 		if rootcache.selectIdx ~= selectIdx then
 			hook.Run('FcmdSelect', fcmddata.metadata[selectIdx])
 			if selectIdx == nil or selectIdx == 0 then
-				if isstring(fcmddata.soundgiveup) then
+				if isstring(fcmddata.soundgiveup) and fcmddata.soundgiveup ~= '' then
 					surface.PlaySound(fcmddata.soundgiveup)
 				else
 					surface.PlaySound('fastcmd/zoomout.wav')
 				end
 			else
-				if isstring(fcmddata.soundselect) then
+				if isstring(fcmddata.soundselect) and fcmddata.soundselect ~= '' then
 					surface.PlaySound(fcmddata.soundselect)
 				else
 					surface.PlaySound('fastcmd/zoomin.wav')
@@ -184,6 +184,8 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 			render.ClearStencil()
 			render.SetStencilEnable(false)
 			render.OverrideColorWriteEnable(false)
+			gui.EnableScreenClicker(false)
+			ExpandUI(false)
 
 			hook.Remove('Think', 'fcmd_think')
 			hook.Remove('HUDPaint', 'fcmd_draw')

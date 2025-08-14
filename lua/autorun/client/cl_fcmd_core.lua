@@ -18,6 +18,7 @@ local circlemask = Material('fastcmd/hud/circlemask')
 local edge = Material('fastcmd/hud/edge.png')
 local edgecolordefault = {r = 255, g = 255, b = 255, a = 255}
 local transform3ddefault = {enable = true, ang = 10, depth = 700}
+local cl_fcmd_notify = CreateClientConVar('cl_fcmd_notify', '1', true, false)
 
 local function GetFilePath(filename)
 	return rootpath..'/'..filename..'.json'
@@ -33,31 +34,50 @@ local function Elasticity(x)
 	return x * 1.4301676 + math.sin(x * 4.0212386) * 0.55866
 end
 
-function fcmd_FastHelp(...)
-	local text = ''
-	for _, v in ipairs({...}) do
-		text = text .. phrase(v) .. ' '
+function fcmd_FastProgress(...)
+	if cl_fcmd_notify:GetBool() then
+		local text = ''
+		for _, v in ipairs({...}) do
+			text = text .. phrase(v) .. ' '
+		end
+		notification.AddProgress('fcmd_notify_progress', text)
+		timer.Simple(0.5, function()
+			notification.Kill('fcmd_notify_progress')
+		end)
 	end
-	notification.AddLegacy(text, NOTIFY_HINT, 5)
+end
+
+function fcmd_FastHelp(...)
 	surface.PlaySound('NPC.ButtonBlip1')
+	if cl_fcmd_notify:GetBool() then
+		local text = ''
+		for _, v in ipairs({...}) do
+			text = text .. phrase(v) .. ' '
+		end
+		notification.AddLegacy(text, NOTIFY_HINT, 5)
+	end
 end
 
 function fcmd_FastError(...)
-	local text = ''
-	for _, v in ipairs({...}) do
-		text = text .. phrase(v) .. ' '
-	end
-	notification.AddLegacy(text, NOTIFY_ERROR, 5)
 	surface.PlaySound('Buttons.snd10')
+	if cl_fcmd_notify:GetBool() then
+		local text = ''
+		for _, v in ipairs({...}) do
+			text = text .. phrase(v) .. ' '
+		end
+		notification.AddLegacy(text, NOTIFY_ERROR, 5)
+	end
 end
 
 function fcmd_FastWarn(...)
-	local text = ''
-	for _, v in ipairs({...}) do
-		text = text .. phrase(v) .. ' '
-	end
-	notification.AddLegacy(text, NOTIFY_GENERIC, 5)
 	surface.PlaySound('Buttons.snd8')
+	if cl_fcmd_notify:GetBool() then
+		local text = ''
+		for _, v in ipairs({...}) do
+			text = text .. phrase(v) .. ' '
+		end
+		notification.AddLegacy(text, NOTIFY_GENERIC, 5)
+	end
 end
 
 local FastError = fcmd_FastError

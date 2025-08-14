@@ -1,14 +1,31 @@
 
 include('cl_fcmd_core.lua')
 local rootpath = 'fastcmd'
+local min = math.min
+local max = math.max
+local DrawHud2D = fcmd_DrawHud2D
+
+local function SafeDrawHud2D(size, fcmddata, state, preview)
+	local succ, err = pcall(DrawHud2D, size, fcmddata, state, preview)
+	if not succ then
+		ErrorNoHaltWithStack(err)
+		fcmd_FastError('#fcmd.err.fatal', '#fcmd.err.data')
+
+		render.ClearStencil()
+		render.SetStencilEnable(false)
+		render.OverrideColorWriteEnable(false)
+		gui.EnableScreenClicker(false)
+	end
+	return succ
+end
+
 --------------------------------
 local function CreateDialog(title, placeholder)
 	local dialog = vgui.Create('DFrame')
-	local w, h = ScrW(), ScrH()
-	
+
 	dialog:SetTitle(title)
 	dialog:SetSize(250, 100)
-	dialog:SetPos(w * 0.5 - 125, h * 0.5 - 50)
+	dialog:Center()
 	dialog:SetDraggable(true)
 	dialog:SetVisible(true)
 	dialog:SetSizable(true)
@@ -93,7 +110,6 @@ function FastCmdDataManager:Init()
 
 	-- 列表更新
 	datalist.UpdateFileList = function() 
-		notification.Kill('fcmd_update_filelist')
 		datalist:Clear()
 
 		local files = file.Find(rootpath..'/*.json', 'DATA')
@@ -254,7 +270,7 @@ end
 function FastCmdDataManager:UpdateFileList()
 	self:SelectFile()
 	timer.Simple(0.5, self.datalist.UpdateFileList)
-	notification.AddProgress('fcmd_update_filelist', '#fcmd.ui.loading')
+	fcmd_FastProgress('#fcmd.ui.loading')
 end
 
 function FastCmdDataManager:OnSizeChanged(newWidth, newHeight)
@@ -278,21 +294,148 @@ function FastCmdDataManager:OnSizeChanged(newWidth, newHeight)
 
 	self.previewbtn:SetPos(newWidth * 0.75, 0.56 * newHeight)
 	self.previewbtn:SetSize(newWidth * 0.25, 0.1 * newHeight)
-end
 
+	self.previewtrans = {
+		x = newWidth * 0.75,
+		y = newHeight * 0.7,
+		w = newWidth * 0.25,
+		h = newWidth * 0.25,
+	}
+end
 
 function FastCmdDataManager:Paint(w, h)
 	self.BaseClass.Paint(self, w, h)
 	if self.preview and istable(self.fcmddata) then
-		fcmd_DrawHud2D(w * 0.15, self.fcmddata, 1, {
-			x = w * 0.75,
-			y = h * 0.7,
-			w = w * 0.25,
-			h = w * 0.25,
-		})
+		local succ = SafeDrawHud2D(
+			w * 0.15, 
+			self.fcmddata, 
+			1, 
+			self.previewtrans
+		)
+		if not succ then self.fcmddata = nil end
 	end
 end
 
 
 vgui.Register('FastCmdDataManager', FastCmdDataManager, 'DPanel')
 --------------------------------
+MaterialsBrowser = nil
+local function OpenMaterialsBrowser(x, y, w, h)
+	if IsValid(MaterialsBrowser) then MaterialsBrowser:Remove() end
+
+	MaterialsBrowser = vgui.Create('DFrame')
+	MaterialsBrowser:SetTitle('#fcmd.ui.title.material_browser')
+	MaterialsBrowser:SetPos(x or 0, y or 0)
+	MaterialsBrowser:SetSize(w, h)
+	MaterialsBrowser:SetSizable(true)
+	MaterialsBrowser:MakePopup()
+	MaterialsBrowser:SetDeleteOnClose(true)
+	
+	local browser = vgui.Create('DFileBrowser', MaterialsBrowser)
+	browser:Dock(FILL)
+	browser:SetPath('GAME') 
+	browser:SetBaseFolder('materials') 
+	browser:SetOpen(true) 
+
+	function browser:OnSelect(path, pnl) 
+		print(path, pnl)
+	end
+end
+
+SoundBrowser = nil
+local function OpenSoundBrowser(x, y, w, h)
+	if IsValid(SoundBrowser) then SoundBrowser:Remove() end
+
+	SoundBrowser = vgui.Create('DFrame')
+	SoundBrowser:SetTitle('#fcmd.ui.title.sound_browser')
+	SoundBrowser:SetPos(x or 0, y or 0)
+	SoundBrowser:SetSize(w or 500, h or 500)
+	SoundBrowser:SetSizable(true)
+	SoundBrowser:MakePopup()
+	SoundBrowser:SetDeleteOnClose(true)
+	SoundBrowser.soundobj = nil
+	
+	local browser = vgui.Create('DFileBrowser', SoundBrowser)
+	browser:Dock(FILL)
+	browser:SetPath('GAME') 
+	browser:SetBaseFolder('sound') 
+	browser:SetOpen(true) 
+
+	function browser:OnDoubleClick(path, _)
+		if SoundBrowser.soundobj then
+			SoundBrowser.soundobj:Stop()
+			SoundBrowser.soundobj = nil	
+		end
+		SoundBrowser.soundobj = CreateSound(LocalPlayer(), string.sub(path, 7, -1))
+		SoundBrowser.soundobj:PlayEx(1, 100)
+	end
+
+	function SoundBrowser:OnRemove()
+		if SoundBrowser.soundobj then
+			SoundBrowser.soundobj:Stop()
+			SoundBrowser.soundobj = nil	
+		end
+	end
+end
+
+// OpenMaterialsBrowser(0, 0, 500, 500)
+// OpenSoundBrowser(0, 0, 500, 500)
+
+Editor = nil
+local function OpenEditor(filename)
+	if IsValid(Editor) then Editor:Remove() end
+
+	Editor = vgui.Create('DFrame')
+	Editor:SetTitle('#fcmd.ui.title.editor')
+	Editor:SetSize(500, 500)
+	Editor:Center()
+	Editor:SetSize(750, 500)
+	Editor:SetSizable(true)
+	Editor:MakePopup()
+	Editor:SetDeleteOnClose(true)
+
+
+	local viewport = vgui.Create('DPanel', Editor)
+	local main = vgui.Create('DPanel', Editor)
+	local div = vgui.Create('DHorizontalDivider', Editor)
+	
+	div:Dock(FILL)
+	div:SetLeft(viewport)
+	div:SetRight(main)
+	div:SetDividerWidth(4)
+	div:SetLeftMin(20) 
+	div:SetRightMin(20)
+	div:SetLeftWidth(250)
+
+	local background = Color(255, 255, 255, 200)
+	viewport.fcmddata = fcmd_LoadFcmdDataFromFile('aaa')
+	viewport.fcmddata.cache.selectIdx = 1
+	
+	function viewport:Paint(w, h)
+		draw.RoundedBox(5, 0, 0, w, h, background)
+		if istable(self.fcmddata) then
+			local succ = SafeDrawHud2D(
+				self.size, 
+				self.fcmddata, 
+				1, 
+				self.previewtrans
+			)
+			if not succ then self.fcmddata = nil end
+		end
+	end
+
+	function viewport:OnSizeChanged(newWidth, newHeight)
+		self.previewtrans = {
+			x = 0,
+			y = 0,
+			w = newWidth,
+			h = newHeight,
+		}
+		self.size = min(newWidth, newHeight) * 0.5
+	end
+end
+// OpenEditor()
+
+
+
+
