@@ -17,7 +17,7 @@ local icondefault = Material('fastcmd/hud/default.png')
 local circlemask = Material('fastcmd/hud/circlemask')
 local edge = Material('fastcmd/hud/edge.png')
 local edgecolordefault = {r = 255, g = 255, b = 255, a = 255}
-local transform3ddefault = {enable = true, ang = 10, depth = 700}
+local transform3ddefault = {enable = true, ang = 10, depth = 1200}
 local cl_fcmd_notify = CreateClientConVar('cl_fcmd_notify', '1', true, false)
 
 local function GetFilePath(filename)
@@ -300,7 +300,7 @@ function fcmd_ParseJSONToFcmdData(json)
 	-- 3D变换参数
 	rootcache.transform3d = istable(fcmddata['3dtransform']) and fcmddata['3dtransform'] or transform3ddefault
 	rootcache.transform3d.ang = rootcache.transform3d.ang or 10
-	rootcache.transform3d.depth = rootcache.transform3d.depth or 700
+	rootcache.transform3d.depth = rootcache.transform3d.depth or 1200
 
 	-- 生成位置、加载材质
 	local step = twopi / #fcmddata.metadata
@@ -339,7 +339,8 @@ function fcmd_ParseJSONToFcmdData(json)
 
 		data.cache = nodecache
 	end
-
+	
+	// PrintTable(fcmddata)
 	return fcmddata
 end
 
@@ -564,7 +565,7 @@ function fcmd_DrawHud(size, fcmddata, state)
 		local old = DisableClipping(true)
 		rootcache.fade = 0 -- 禁用2D的淡入绘制
 		
-		cam.Start3D(campos, camang)
+		cam.Start3D(campos, camang, 60)
 			cam.Start3D2D(zerovec, zeroang, 1)
 				DrawHud2D(size, fcmddata, state)
 			cam.End3D2D() 

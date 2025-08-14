@@ -177,6 +177,8 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 		
 		-- 使用多个全局渲染设置, 异常时必须着重处理
 		local succ, err = pcall(DrawHud, cl_fcmd_menu_size:GetInt(), fcmddata, expandstate)
+		// fcmd_DrawBounds(cl_fcmd_menu_size:GetInt(), fcmddata)
+		
 		if not succ then
 			ErrorNoHaltWithStack(err)
 			FastError('#fcmd.err.fatal', '#fcmd.err.hook_die')
