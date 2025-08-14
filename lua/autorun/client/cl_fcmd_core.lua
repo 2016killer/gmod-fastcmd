@@ -8,6 +8,7 @@ local radunit = 180 / math.pi
 local surface = surface
 local RealFrameTime = RealFrameTime
 local Vector = Vector
+local phrase = language.GetPhrase
 
 local rootpath = 'fastcmd' -- 数据根目录
 local cicondefault = Material('hud/fastcmd/cicon.png')
@@ -18,8 +19,12 @@ local edge = Material('hud/fastcmd/edge.png')
 local edgecolordefault = {r = 255, g = 255, b = 255, a = 255}
 local transform3ddefault = {enable = true, ang = 10, depth = 700}
 
+local function GetFilePath(filename)
+	return rootpath..'/'..filename..'.json'
+end
 
 local function trim(str) 
+	if not isstring(str) then return '' end
 	return str:gsub('^%s+', ''):gsub('%s+$', '') 
 end
 
@@ -28,21 +33,50 @@ local function Elasticity(x)
 	return x * 1.4301676 + math.sin(x * 4.0212386) * 0.55866
 end
 
-function fcmd_FastError(text)
+function fcmd_FastHelp(...)
+	local text = ''
+	for _, v in ipairs({...}) do
+		text = text .. phrase(v) .. ' '
+	end
+	notification.AddLegacy(text, NOTIFY_HINT, 5)
+	surface.PlaySound('NPC.ButtonBlip1')
+end
+
+function fcmd_FastError(...)
+	local text = ''
+	for _, v in ipairs({...}) do
+		text = text .. phrase(v) .. ' '
+	end
 	notification.AddLegacy(text, NOTIFY_ERROR, 5)
 	surface.PlaySound('Buttons.snd10')
 end
 
-function fcmd_FastWarning(text)
+function fcmd_FastWarn(...)
+	local text = ''
+	for _, v in ipairs({...}) do
+		text = text .. phrase(v) .. ' '
+	end
 	notification.AddLegacy(text, NOTIFY_GENERIC, 5)
 	surface.PlaySound('Buttons.snd8')
 end
 
 local FastError = fcmd_FastError
-local FastWarning = fcmd_FastWarning
+local FastWarn = fcmd_FastWarn
 
+local function ParseError(...) FastError('#fcmd.err.parse', ...) end
+local function DumpsError(...) FastError('#fcmd.err.dumps', ...) end
+local function CreateError(...) FastError('#fcmd.err.create', ...) end
+local function LoadError(...) FastError('#fcmd.err.load', ...) end
+local function SaveError(...) FastError('#fcmd.err.save', ...) end
+local function SaveAsError(...) FastError('#fcmd.err.saveas', ...) end
 
-function fcmd_DrawHud2D(size, fcmddata, state, debug)
+local function ParseWarn(...) FastWarn('#fcmd.warn.parse', ...) end
+local function SaveAsWarn(...) FastWarn('#fcmd.warn.saveas', ...) end
+
+local function IsFileNameEmpty(filename) return filename == '' or filename == '0' end
+
+------------------------------
+function fcmd_DrawHud2D(size, fcmddata, state)
 	-- 绘制 HUD
 	-- size 菜单尺寸 (直径)
 	-- fcmddata 指令数据
@@ -143,16 +177,23 @@ function fcmd_DrawHud2D(size, fcmddata, state, debug)
 				iconsize, iconsize, 0)
 		end
 	end
+end
 
-	if debug then
-		surface.DrawCircle(cx, cy, size * 0.5, 255, 255, 255, 255)
-		surface.DrawCircle(cx, cy, centersize * 0.5, 255, 255, 255, 255)
-		for i, data in ipairs(fcmddata.metadata) do	 
-			local cache = data.cache
-			cache.addlen = rootcache.selectIdx == i and 1 or 0
-			local lpos = size * cache.dir * (0.5 + cache.addlen * 0.1)
-			surface.DrawCircle(cx + lpos.x, cy + lpos.y, iconsize * 0.5, 255, 255, 255, 255)
-		end
+function fcmd_DrawBounds(size, fcmddata)
+	-- 绘制边界
+	local w, h = ScrW(), ScrH()
+	local cx, cy = w * 0.5, h * 0.5
+
+	local rootcache = fcmddata.cache
+	local centersize = rootcache.centersize * size
+	local iconsize = rootcache.iconsize * size
+
+	surface.DrawCircle(cx, cy, size * 0.5, 255, 255, 255, 255)
+	surface.DrawCircle(cx, cy, centersize * 0.5, 255, 255, 255, 255)
+	for i, data in ipairs(fcmddata.metadata) do	 
+		local cache = data.cache
+		local lpos = size * cache.dir * 0.5
+		surface.DrawCircle(cx + lpos.x, cy + lpos.y, iconsize * 0.5, 255, 255, 255, 255)
 	end
 end
 
@@ -177,17 +218,17 @@ function fcmd_CheckSelect(size, fcmddata)
 
 	return 0
 end
-
-function fcmd_LoadsFcmdData(json)
+------------------------------
+function fcmd_ParseJSONToFcmdData(json)
 	-- 加载数据并验证
 	local fcmddata = util.JSONToTable(json)
 	if not istable(fcmddata) then 
-		FastError('#fcmd.err.loads.not_json')
+		ParseError('#fcmd.err.json_err')
 		return nil
 	else
 		-- 自动修复metadata
 		if not istable(fcmddata.metadata) then
-			FastWarning('#fcmd.warn.loads.loss_metadata')
+			ParseWarn('#fcmd.warn.loss_field', 'metadata')
 			fcmddata.metadata = {}
 		end
 	end
@@ -240,11 +281,13 @@ function fcmd_LoadsFcmdData(json)
 		-- 元数据检测并修复
 		// if true then continue end
 		if not istable(data) then
-			FastWarning('#fcmd.warn.loads.invalid_element')
-			fcmddata.metadata[i] = {}
+			ParseWarn('#fcmd.warn.invalid_element', '"'..tostring(i)..'"')
+			data = {}
+			fcmddata.metadata[i] = data
 		end
 		if not isnumber(i) then
-			FastWarning('#fcmd.warn.loads.invalid_idx')
+			ParseWarn('#fcmd.warn.invalid_idx', '"'..tostring(i)..'"')
+			i = 0
 		end
 
 		local ang = -halfpi + (i - 1) * step
@@ -273,10 +316,10 @@ function fcmd_LoadsFcmdData(json)
 	return fcmddata
 end
 
-function fcmd_DumpsFcmdData(fcmddata)
+function fcmd_DumpsFcmdDataToJSON(fcmddata)
 	-- 序列化数据
 	if not istable(fcmddata) then
-		FastError('#fcmd.err.dumps.not_table')
+		DumpsError('#fcmd.err.not_table')
 		return nil
 	end
 
@@ -289,58 +332,109 @@ function fcmd_DumpsFcmdData(fcmddata)
 
 	return util.TableToJSON(fcmddata, true)
 end
-
+------------------------------
 function fcmd_LoadFcmdDataFromFile(filename)
 	-- 从文件中获取fcmddata
 
-	-- 是否为字符串
-	if not isstring(filename) then  
-		FastError('#fcmd.err.file.not_string')
-		return nil
-	end
-
 	filename = trim(filename)
-	local path = rootpath..'/'..filename..'.json'
-	-- 存在性、格式过滤等
-	if filename == '' or filename == '0' then
+	local path = GetFilePath(filename)
+
+	-- 存在性、空检测
+	if IsFileNameEmpty(filename) then
 		-- 在设计中, 切换玩家当前的fcmddata依赖参数变化的函数, 所以重载前需要先清空
 		-- 所以这里不视为错误
 		return nil
 	elseif not file.Exists(path, 'DATA') then
-		FastError('#fcmd.err.file.not_exist')
+		LoadError('#fcmd.err.file_not_exist')
 		return nil
 	end
 
 	local json = file.Read(path, 'DATA')	
-	return fcmd_LoadsFcmdData(json)
+	return fcmd_ParseJSONToFcmdData(json)
 end
+
 
 function fcmd_SaveFcmdDataToFile(fcmddata, filename, override)
 	-- 保存fcmddata文件
 
-	-- 是否为字符串
-	if not isstring(filename) then  
-		FastError('#fcmd.err.save.not_string')
-		return false
-	end
-
 	filename = trim(filename)
-	local path = rootpath..'/'..filename..'.json'
+	local path = GetFilePath(filename)
 
-	-- 存在性、格式过滤等
-	if filename == '' or filename == '0' then
-		FastError('#fcmd.err.save.empty')
+	-- 存在性、空检测
+	if IsFileNameEmpty(filename) then
+		SaveError('#fcmd.err.filename_empty')
 		return false
 	elseif not override and file.Exists(path, 'DATA') then
-		FastError('#fcmd.err.save.exist')
+		SaveError('#fcmd.err.file_exist')
 		return false
 	end
 
-	local json = fcmd_DumpsFcmdData(fcmddata)
+	local json = fcmd_DumpsFcmdDataToJSON(fcmddata)
 	file.Write(path, json)
 
 	return true
 end
+
+function fcmd_SaveAsProgress(filename, warn)
+	-- 检查另存为文件名, 返回进度
+
+	filename = trim(filename)
+	local path = GetFilePath(filename)
+
+	-- 存在性、空检测
+	if IsFileNameEmpty(filename) then
+		SaveAsError('#fcmd.err.filename_empty')
+		return false
+	elseif file.Exists(path, 'DATA') then
+		if warn then SaveAsWarn('#fcmd.warn.override') end
+		return 1
+	end
+
+	return 2
+end
+
+
+function fcmd_SaveAs(origin, target)
+	-- 另存为
+
+	origin = trim(origin)
+	target = trim(target)
+	local originPath = GetFilePath(origin)
+	local targetPath = GetFilePath(target)
+
+	if IsFileNameEmpty(origin) or IsFileNameEmpty(target) then 
+		SaveAsError('#fcmd.err.filename_empty')
+		return false 
+	end
+
+	if not file.Exists(originPath, 'DATA') then
+		SaveAsError('#fcmd.err.origin_not_exist')
+		return false 
+	end
+
+	local json = file.Read(originPath, 'DATA') or ''
+	file.Write(targetPath, json)
+
+	return true
+end
+
+function fcmd_Delete(filename)
+	-- 删除数据文件
+
+	filename = trim(filename)
+	local path = GetFilePath(filename)
+
+	-- 存在性、空检测
+	if IsFileNameEmpty(filename) then
+		return true
+	elseif not file.Exists(path, 'DATA') then
+		return true
+	end
+
+	file.Delete(path)
+	return true
+end
+------------------------------
 
 function fcmd_CmdFilter(cmd)
 	-- 过滤含有fcmd_的指令, 防止无限递归
@@ -405,7 +499,7 @@ local startmartix = Matrix()
 	startmartix:SetTranslation(Vector())
 	startmartix:SetAngles(Angle(90, 0, -90))
 local zerovec, zeroang = Vector(), Angle()
-function fcmd_DrawHud(size, fcmddata, state, debug)
+function fcmd_DrawHud(size, fcmddata, state)
 	-- 绘制 HUD
 	local rootcache = fcmddata.cache 
 	local transform3d = rootcache.transform3d
@@ -445,14 +539,14 @@ function fcmd_DrawHud(size, fcmddata, state, debug)
 		
 		cam.Start3D(campos, camang)
 			cam.Start3D2D(zerovec, zeroang, 1)
-				DrawHud2D(size, fcmddata, state, debug)
+				DrawHud2D(size, fcmddata, state)
 			cam.End3D2D() 
 		cam.End3D()
 
 		rootcache.fade = fade -- 恢复数据
 		DisableClipping(old)
 	else
-		DrawHud2D(size, fcmddata, state, debug)
+		DrawHud2D(size, fcmddata, state)
 	end
 end
 
@@ -462,25 +556,19 @@ function fcmd_CreateFcmdDataFile(filename)
 
 	-- 检查暂停
 	if gui.IsGameUIVisible() then 
-		FastError('#fcmd.err.create.pause')
-		return false
-	end
-
-	-- 是否为字符串
-	if not isstring(filename) then  
-		FastError('#fcmd.err.create.not_string')
+		CreateError('#fcmd.err.pause')
 		return false
 	end
 
 	filename = trim(filename)
-	local path = rootpath..'/'..filename..'.json'
+	local path = GetFilePath(filename)
 
 	-- 空名字、存在性检查
-	if filename == '' or filename == '0' then
-		FastError('#fcmd.err.create.empty')
+	if IsFileNameEmpty(filename) then
+		CreateError('#fcmd.err.filename_empty')
 		return false
 	elseif file.Exists(path, 'DATA') then
-		FastError('#fcmd.err.create.exist')
+		CreateError('#fcmd.err.file_exist')
 		return false
 	end
 

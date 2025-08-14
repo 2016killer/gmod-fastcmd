@@ -8,6 +8,7 @@ local CheckSelect = fcmd_CheckSelect
 local pcall = pcall
 local ErrorNoHaltWithStack = ErrorNoHaltWithStack
 local FastError = fcmd_FastError
+local FastHelp = fcmd_FastHelp
 -----------------------------
 local fcmddata
 local function BreakCmd()
@@ -123,73 +124,81 @@ local function BreakKeyEvent()
 	breakKey = current
 end
 
-hook.Add('Think', 'fcmd_think', function()
-	if not istable(fcmddata) then return end
 
-	-- 按键事件
-	ExpandKeyEvent()
-	ExecuteKeyEvent()
-	BreakKeyEvent()
 
-	if not expand then return end 
+concommand.Add('fcmd_add_hook', function(ply, cmd, args)
+	hook.Add('Think', 'fcmd_think', function()
+		if not istable(fcmddata) then return end
 
-	-- 检查选中
-	local rootcache = fcmddata.cache
-	local selectIdx = CheckSelect(
-		rootcache.centersize * cl_fcmd_menu_size:GetInt(), 
-		fcmddata
-	)
+		-- 按键事件
+		ExpandKeyEvent()
+		ExecuteKeyEvent()
+		BreakKeyEvent()
 
-	-- 选中变化 (播放音效并触发事件)
-	if rootcache.selectIdx ~= selectIdx then
-		hook.Run('FcmdSelect', fcmddata.metadata[selectIdx])
-		if selectIdx == nil or selectIdx == 0 then
-			if isstring(fcmddata.soundgiveup) then
-				surface.PlaySound(fcmddata.soundgiveup)
+		if not expand then return end 
+
+		-- 检查选中
+		local rootcache = fcmddata.cache
+		local selectIdx = CheckSelect(
+			rootcache.centersize * cl_fcmd_menu_size:GetInt(), 
+			fcmddata
+		)
+
+		-- 选中变化 (播放音效并触发事件)
+		if rootcache.selectIdx ~= selectIdx then
+			hook.Run('FcmdSelect', fcmddata.metadata[selectIdx])
+			if selectIdx == nil or selectIdx == 0 then
+				if isstring(fcmddata.soundgiveup) then
+					surface.PlaySound(fcmddata.soundgiveup)
+				else
+					surface.PlaySound('fastcmd/zoomout.wav')
+				end
 			else
-				surface.PlaySound('fastcmd/zoomout.wav')
-			end
-		else
-			if isstring(fcmddata.soundselect) then
-				surface.PlaySound(fcmddata.soundselect)
-			else
-				surface.PlaySound('fastcmd/zoomin.wav')
+				if isstring(fcmddata.soundselect) then
+					surface.PlaySound(fcmddata.soundselect)
+				else
+					surface.PlaySound('fastcmd/zoomin.wav')
+				end
 			end
 		end
-	end
-	rootcache.selectIdx = selectIdx
+		rootcache.selectIdx = selectIdx
+	end)
+
+	local expandstate = 0
+	hook.Add('HUDPaint', 'fcmd_draw', function() 
+		if expand then
+			expandstate = Clamp(expandstate + 5 * RealFrameTime(), 0, 1)
+		else
+			expandstate = Clamp(expandstate - 5 * RealFrameTime(), 0, 1)
+		end
+		if expandstate == 0 then 
+			return 
+		end
+		
+		-- 使用多个全局渲染设置, 异常时必须着重处理
+		local succ, err = pcall(DrawHud, cl_fcmd_menu_size:GetInt(), fcmddata, expandstate)
+		if not succ then
+			ErrorNoHaltWithStack(err)
+			FastError('#fcmd.err.fatal', '#fcmd.err.hook_die')
+
+			render.ClearStencil()
+			render.SetStencilEnable(false)
+			render.OverrideColorWriteEnable(false)
+
+			hook.Remove('Think', 'fcmd_think')
+			hook.Remove('HUDPaint', 'fcmd_draw')
+		end
+	end)
 end)
 
-local expandstate = 0
-hook.Add('HUDPaint', 'fcmd_draw', function() 
-	if expand then
-		expandstate = Clamp(expandstate + 5 * RealFrameTime(), 0, 1)
-	else
-		expandstate = Clamp(expandstate - 5 * RealFrameTime(), 0, 1)
-	end
-	if expandstate == 0 then 
-		return 
-	end
-	
-	-- 使用多个全局渲染设置, 异常时必须着重处理
-	local succ, err = pcall(DrawHud, cl_fcmd_menu_size:GetInt(), fcmddata, expandstate)
-	if not succ then
-		ErrorNoHaltWithStack(err)
-		FastError('#fcmd.err.render')
-
-		render.ClearStencil()
-		render.SetStencilEnable(false)
-		render.OverrideColorWriteEnable(false)
-
-		hook.Remove('HUDPaint', 'fcmd_draw')
-	end
-end)
 
 
 hook.Add('KeyPress', 'fcmd_init', function(ply, key)
 	if key == IN_FORWARD or key == IN_BACK then
+		LocalPlayer():ConCommand('fcmd_add_hook')
 		fcmddata = fcmd_LoadFcmdDataFromFile(cl_fcmd_file:GetString())
 		if istable(fcmddata) then surface.PlaySound('Weapon_AR2.Reload_Push') end
+		FastHelp('#fcmd.help.use')
 		hook.Remove('KeyPress', 'fcmd_init')
 	end
 end)
