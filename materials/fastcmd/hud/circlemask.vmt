@@ -1,0 +1,5 @@
+"UnlitGeneric"
+{
+    "$basetexture" "fastcmd/hud/circlemask" 
+    "$alphatest" "1"
+}

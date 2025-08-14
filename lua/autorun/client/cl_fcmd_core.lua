@@ -11,11 +11,11 @@ local Vector = Vector
 local phrase = language.GetPhrase
 
 local rootpath = 'fastcmd' -- 数据根目录
-local cicondefault = Material('hud/fastcmd/cicon.png')
-local arrowdefault = Material('hud/fastcmd/arrow.png')
-local icondefault = Material('hud/fastcmd/default.png')
-local circlemask = Material('hud/fastcmd/circlemask')
-local edge = Material('hud/fastcmd/edge.png')
+local cicondefault = Material('fastcmd/hud/cicon.png')
+local arrowdefault = Material('fastcmd/hud/arrow.png')
+local icondefault = Material('fastcmd/hud/default.png')
+local circlemask = Material('fastcmd/hud/circlemask')
+local edge = Material('fastcmd/hud/edge.png')
 local edgecolordefault = {r = 255, g = 255, b = 255, a = 255}
 local transform3ddefault = {enable = true, ang = 10, depth = 700}
 
@@ -76,16 +76,23 @@ local function SaveAsWarn(...) FastWarn('#fcmd.warn.saveas', ...) end
 local function IsFileNameEmpty(filename) return filename == '' or filename == '0' end
 
 ------------------------------
-function fcmd_DrawHud2D(size, fcmddata, state)
+function fcmd_DrawHud2D(size, fcmddata, state, preview)
 	-- 绘制 HUD
 	-- size 菜单尺寸 (直径)
 	-- fcmddata 指令数据
 	-- state 尺寸插值比例
 	state = max(state, 0)
 
-	local w, h = ScrW(), ScrH()
-	local cx, cy = w * 0.5, h * 0.5
 	local x, y = gui.MouseX(), gui.MouseY()
+	local sx, sy = 0, 0
+	local w, h = ScrW(), ScrH()
+	if istable(preview) then
+		-- 没什么卵用, 只是为了方便不用渲染参数绘制预览
+		sx, sy = preview.x, preview.y
+		w, h = preview.w, preview.h	
+	end
+	local cx, cy = sx + w * 0.5, sy + h * 0.5
+	
 	local stateinterp = Elasticity(state)
 	 
 	-- 使用插值后的大小, 图标大小使用等分占比
@@ -98,7 +105,7 @@ function fcmd_DrawHud2D(size, fcmddata, state)
 	draw.NoTexture()
 	-- 淡入黑色背景
 	surface.SetDrawColor(0, 0, 0, fade)
-	surface.DrawRect(0, 0, w, h)
+	surface.DrawRect(sx, sy, w, h)
 	
 	-- 中心图标绘制
 	surface.SetDrawColor(255, 255, 255, 255)
@@ -580,19 +587,19 @@ function fcmd_CreateFcmdDataFile(filename)
 			"call": {
 				"pexecute": "test_example \"Hello World\""
 			},
-			"icon": "hud/fastcmd/world.jpeg"
+			"icon": "fastcmd/hud/world.jpeg"
 		},
 		{
 			"call": {
 				"pexecute": "test_example \"Hello Garry's Mod\""
 			},
-			"icon": "hud/fastcmd/gmod.jpeg"
+			"icon": "fastcmd/hud/gmod.jpeg"
 		},
 		{
 			"call": {
 				"pexecute": "test_example \"Hello Workshop\""
 			},
-			"icon": "hud/fastcmd/workshop.jpeg"
+			"icon": "fastcmd/hud/workshop.jpeg"
 		}
 	]
 }

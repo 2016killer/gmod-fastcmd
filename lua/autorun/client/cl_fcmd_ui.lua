@@ -82,6 +82,11 @@ function FastCmdDataManager:Init()
 	deletebtn:SetTextColor(Color(255, 100, 50, 255))
 	self.deletebtn = deletebtn
 
+	-- 预览按钮
+	local previewbtn = vgui.Create('DButton', self)
+	previewbtn:SetText('#fcmd.ui.enable_preview')
+	self.previewbtn = previewbtn
+
 
 	self:SelectFile()
 	self.saveAsState = 0
@@ -94,11 +99,14 @@ function FastCmdDataManager:Init()
 		local files = file.Find(rootpath..'/*.json', 'DATA')
 		if #files < 1 then return end
 
-		local activefile = GetConVar('cl_fcmd_file'):GetString()..'.json'
+		local activefile = GetConVar('cl_fcmd_file'):GetString()
 		for _, filename in pairs(files) do
-			local icon 
+			filename = string.sub(filename, 1, -6)
+			local icon
 			if filename == activefile then
 				icon = 'icon16/tick.png'
+			elseif file.Exists('materials/fastcmd/thumbnail/'..filename..'.png', 'GAME') then
+				icon = 'fastcmd/thumbnail/'..filename..'.png'
 			else
 				icon = 'icon16/page.png'
 			end
@@ -114,7 +122,7 @@ function FastCmdDataManager:Init()
 		local filename = datalist:GetSelectedItem().filename
 		if filename == self:GetSelectFile() and CurTime() - (datalist.clicktime or 0) < 0.3 then
 			LocalPlayer():ConCommand('cl_fcmd_file 0')
-			LocalPlayer():ConCommand('cl_fcmd_file '..string.sub(filename, 1, -6))
+			LocalPlayer():ConCommand('cl_fcmd_file '..filename)
 			self:UpdateFileList()
 		end
 		datalist.clicktime = CurTime()
@@ -158,8 +166,22 @@ function FastCmdDataManager:Init()
 			return
 		end
 
-		local filename = string.sub(self:GetSelectFile(), 1, -6)
-		return self:Delete(filename)
+		return self:Delete(self:GetSelectFile())
+	end
+
+	-- 预览按钮回调
+	previewbtn.DoClick = function()
+		self.preview = !self.preview
+		if self.preview then
+			previewbtn:SetText('#fcmd.ui.disable_preview')
+			local filename = self:GetSelectFile()
+			if filename ~= '' then
+				self.fcmddata = fcmd_LoadFcmdDataFromFile(filename)
+			end
+		else
+			previewbtn:SetText('#fcmd.ui.enable_preview')
+			self.fcmddata = nil
+		end
 	end
 end
 
@@ -169,6 +191,9 @@ function FastCmdDataManager:SelectFile(filename)
 	self.title:SetText(language.GetPhrase('#fcmd.ui.select')..(filename == '' and 'None' or filename))
 	self.saveAsState = 0
 	self.deleteState = 0
+	if self.preview then
+		self.fcmddata = fcmd_LoadFcmdDataFromFile(filename)
+	end
 end
 
 function FastCmdDataManager:GetSelectFile()
@@ -250,7 +275,24 @@ function FastCmdDataManager:OnSizeChanged(newWidth, newHeight)
 
 	self.deletebtn:SetPos(newWidth * 0.75, 0.44 * newHeight)
 	self.deletebtn:SetSize(newWidth * 0.25, 0.1 * newHeight)
+
+	self.previewbtn:SetPos(newWidth * 0.75, 0.56 * newHeight)
+	self.previewbtn:SetSize(newWidth * 0.25, 0.1 * newHeight)
 end
+
+
+function FastCmdDataManager:Paint(w, h)
+	self.BaseClass.Paint(self, w, h)
+	if self.preview and istable(self.fcmddata) then
+		fcmd_DrawHud2D(w * 0.15, self.fcmddata, 1, {
+			x = w * 0.75,
+			y = h * 0.7,
+			w = w * 0.25,
+			h = w * 0.25,
+		})
+	end
+end
+
 
 vgui.Register('FastCmdDataManager', FastCmdDataManager, 'DPanel')
 --------------------------------
