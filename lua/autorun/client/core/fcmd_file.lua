@@ -3,7 +3,6 @@ include('fcmd_notify.lua')
 local cicondefault = Material('fastcmd/hud/cicon.png')
 local arrowdefault = Material('fastcmd/hud/arrow.png')
 local icondefault = Material('fastcmd/hud/default.jpg')
-local circlemask = Material('fastcmd/hud/circlemask')
 local edgedefault = Material('fastcmd/hud/edge.png')
 local rotate3d = 10
 local cl_fcmd_notify = CreateClientConVar('cl_fcmd_notify', '1', true, false)
@@ -86,7 +85,7 @@ function FcmdParseJSON2WheelData(json)
 	rootcache.fade = math.max(numdefault(wdata.fade, 100), 0)
 	rootcache.centersize = math.max(numdefault(wdata.centersize, 0.5), 0)
 	rootcache.iconsize = math.sin(angbound * 0.25) * 2
-	rootcache.rotate3d = numdefault(wdata.rotate3d, 10)
+	rootcache.rotate3d = numdefault(wdata.rotate3d, 10) * math.pi / 180
 
 	-- 生成位置、加载材质
 	local step = math.pi * 2 / #wdata.metadata
@@ -274,21 +273,21 @@ function FcmdCreateWheelData(folder)
 		{
 			"call": {
 				"pexecute": "fcmd_example \"Hello World\"",
-				"rexecute": "fcmd_example \"Good Bye World\""
+				"rexecute": "fcmd_example \"Good Bye\""
 			},
 			"icon": "fastcmd/hud/world.jpeg"
 		},
 		{
 			"call": {
 				"pexecute": "fcmd_example \"Hello Garry's Mod\"",
-				"rexecute": "fcmd_example \"Good Bye Garry's Mod\""
+				"rexecute": "fcmd_example \"Good Bye\""
 			},
 			"icon": "fastcmd/hud/gmod.jpeg"
 		},
 		{
 			"call": {
 				"pexecute": "fcmd_example \"Hello Workshop\"",
-				"rexecute": "fcmd_example \"Good Bye Workshop\""
+				"rexecute": "fcmd_example \"Good Bye\""
 			},
 			"icon": "fastcmd/hud/workshop.jpeg"
 		}

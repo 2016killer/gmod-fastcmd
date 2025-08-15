@@ -10,6 +10,8 @@ local RealFrameTime = RealFrameTime
 local Vector = Vector
 local zerovec, zeroang = Vector(), Angle()
 
+local circlemask = Material('fastcmd/hud/circlemask')
+
 local function Elasticity(x)
 	if x >= 1 then return 1 end
 	return x * 1.4301676 + sin(x * 4.0212386) * 0.55866
@@ -182,7 +184,7 @@ function FcmdDrawWheel(size, wdata, state)
 		if rootcache.selectIdx ~= nil then
 			local dx, dy = gui.MouseX() - cx, gui.MouseY() - cy
 			local dis = sqrt(dx * dx + dy * dy)
-			local sina, cosa = sin(ang), cos(ang)
+			local sina, cosa = sin(rotate3d), cos(rotate3d)
 			local pitch = atan2(dx / dis * sina, cosa) * radunit
 			local roll = asin(dy / dis * sina) * radunit
 			local rotate = Matrix()

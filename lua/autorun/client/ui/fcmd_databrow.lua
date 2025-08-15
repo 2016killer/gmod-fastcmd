@@ -87,7 +87,7 @@ function CreateWheelDataBrowser(parent)
 		menu:Open()
 	end
 
-	function FileBrowser:OnSelect(filePath, _)
+	function FileBrowser:OnSelect(filePath)
 		WheelDataBrowser.OpenPath = string.GetPathFromFilename(filePath)
 	end
 
@@ -104,7 +104,7 @@ function CreateWheelDataBrowser(parent)
 	// end
 
 
-	function FileBrowser:OnDoubleClick(filePath, _)
+	function FileBrowser:OnDoubleClick(filePath)
 		print(filePath)
 	end
 
@@ -130,7 +130,7 @@ CreateWheelDataBrowser(frame)
 // 	self.saveAsState = 0
 // 	self.deleteState = 0
 // 	if self.preview then
-// 		self.fcmddata, _ = fcmd_LoadFcmdDataFromFile(filename)
+// 		self.fcmddata = fcmd_LoadFcmdDataFromFile(filename)
 // 	end
 // end
 
@@ -154,7 +154,7 @@ CreateWheelDataBrowser(frame)
 
 // function FastCmdDataManager:SaveAs(origin, target)
 // 	local state = self.saveAsState
-// 	local progress, _ = fcmd_SaveAsProgress(target, state == 0)
+// 	local progress = fcmd_SaveAsProgress(target, state == 0)
 	
 // 	if progress then
 // 		state = state + progress
@@ -164,7 +164,7 @@ CreateWheelDataBrowser(frame)
 // 	self.saveAsState = state
 
 // 	if state >= 2 then
-// 		local succ, _ = fcmd_SaveAs(origin, target)
+// 		local succ = fcmd_SaveAs(origin, target)
 // 		if succ then
 // 			self:UpdateFileList()
 // 			surface.PlaySound('garrysmod/ui_click.wav')
@@ -183,7 +183,7 @@ CreateWheelDataBrowser(frame)
 // 		return false
 // 	elseif self.deleteState >= 2 then
 // 		self.deleteState = 0
-// 		local succ, _ = fcmd_Delete(filename)
+// 		local succ = fcmd_Delete(filename)
 // 		if succ then
 // 			LocalPlayer():ConCommand('cl_fcmd_wfile ""')
 // 			surface.PlaySound('Buttons.snd15')

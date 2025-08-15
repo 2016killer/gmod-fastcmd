@@ -58,6 +58,7 @@ local function ExecuteCurCall(state)
 	-- 执行选中
 	-- 展开ui时不执行
 	if expand or not istable(curcall) then return end
+	PrintTable(curcall)
 	ExecuteCall(curcall, state)
 end
 
@@ -90,8 +91,9 @@ function FcmdmClearCurWData()
 end
 
 cvars.AddChangeCallback('cl_fcmd_wfile', function(name, old, new) 
+	local newdata
 	if new ~= '' then
-		local newdata, _ = FcmdLoadWheelData(new)
+		newdata = FcmdLoadWheelData(new)
 		if istable(newdata) then 
 			if isstring(newdata.loadsound) and newdata.loadsound ~= '' then
 				surface.PlaySound(soundpath)
@@ -206,18 +208,18 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 		-- 使用多个全局渲染设置, 异常时必须着重处理
 		local succ, err = pcall(DrawWheel, cl_fcmd_menu_size:GetInt(), curwdata, expandstate)
 		
-		if not succ then
-			ErrorNoHaltWithStack(err)
-			FcmdError('#fcmd.err.fatal', '#fcmd.err.hook_die')
-
+		if not succ then	
 			render.ClearStencil()
 			render.SetStencilEnable(false)
 			render.OverrideColorWriteEnable(false)
 			gui.EnableScreenClicker(false)
-			ExpandWheel(false)
-
+			
 			hook.Remove('Think', 'fcmd_think')
 			hook.Remove('HUDPaint', 'fcmd_draw')
+
+			ErrorNoHaltWithStack(err)
+			FcmdError('#fcmd.err.fatal', '#fcmd.err.hook_die')
+			ExpandWheel(false)
 		end
 	end)
 end)

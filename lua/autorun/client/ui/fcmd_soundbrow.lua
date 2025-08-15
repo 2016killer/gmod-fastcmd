@@ -17,7 +17,7 @@
 // 	browser:SetBaseFolder('sound') 
 // 	browser:SetOpen(true) 
 
-// 	function browser:OnDoubleClick(path, _)
+// 	function browser:OnDoubleClick(path)
 // 		if SoundBrowser.soundobj then
 // 			SoundBrowser.soundobj:Stop()
 // 			SoundBrowser.soundobj = nil	

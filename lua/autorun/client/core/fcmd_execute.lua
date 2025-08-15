@@ -14,7 +14,7 @@ local function CmdFilter(cmd)
 	local result = {}
 
     -- 以;分割所有子串
-    for part in Split(cmd, ';') do
+    for _, part in ipairs(Split(cmd, ';')) do
 		part = Trim(part)
         if not cmdfilter[part] then
         	table.insert(result, part)
@@ -29,11 +29,10 @@ local function AutoParseRexecute(cmd)
     local result = {}
 
     -- 以;分割所有子串
-    for part in Split(cmd, ';') do
+    for _, part in ipairs(Split(cmd, ';')) do
 		part = Trim(part)
         if part[1] == '+' then
-            part[1] = '-'
-            table.insert(result, replacedPart)
+            table.insert(result, '-'..string.sub(part, 2))
         end
     end
     return table.concat(result, ';')
