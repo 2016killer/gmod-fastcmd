@@ -70,26 +70,28 @@ local function CreateDialog(title, placeholder)
 end
 --------------------------------
 local FcmdDataBrowser
-local FcmdDataBaseFolder = 'data/fastcmd/wheel'
+local FcmdDataBaseFolder = 'data'
 
 function OpenFcmdDataBrowser(parent)
 	-- 数据列表
 	if IsValid(FcmdDataBrowser) then FcmdDataBrowser:Remove() end
-	FcmdDataBrowser = vgui.Create('DFrame', parent)
+
+	FcmdDataBrowser = vgui.Create('DPanel', parent)
+	FcmdDataBrowser:Dock(FILL)
 
 	local SearchInput = vgui.Create('DTextEntry', FcmdDataBrowser)
-	SearchInput:Dock(TOP)
-
 	local RefreshBtn = vgui.Create('DButton', FcmdDataBrowser)
-	RefreshBtn:Dock(LEFT)
+
+	
+	// SearchInput:Dock(TOP)
+	// RefreshBtn:Dock(LEFT)
 
 
 	// local FileBrowser = vgui.Create('DFileBrowser', FcmdDataBrowser)
 	// FileBrowser:Dock(FILL)
 	// FileBrowser:SetPath('GAME') 
-	// FileBrowser:SetBaseFolder('sound') 
+	// FileBrowser:SetBaseFolder('addons') 
 	// FileBrowser:SetOpen(true) 
-
 
 	// local title = vgui.Create('DLabel', self)
 	// title:SetColor(Color(0, 0, 0))
@@ -224,7 +226,8 @@ frame:SetSize(500, 500)
 frame:Center()
 frame:MakePopup()
 frame:SetKeyBoardInputEnabled(true)
-OpenFcmdDataBrowser(Frame)
+OpenFcmdDataBrowser(frame)
+
 
 // --------------------------------
 // local FastCmdDataManager = {}
@@ -484,294 +487,3 @@ OpenFcmdDataBrowser(Frame)
 // print(addonMat)
 
 // vgui.Register('FastCmdDataManager', FastCmdDataManager, 'DPanel')
-// --------------------------------
-// MaterialsBrowser = nil
-// local function OpenMaterialsBrowser()
-// 	if IsValid(MaterialsBrowser) then MaterialsBrowser:Remove() end
-// 	local scrw, scrh = ScrW(), ScrH()
-
-// 	MaterialsBrowser = vgui.Create('DFrame')
-// 	MaterialsBrowser:SetTitle('#fcmd.ui.title.material_browser')
-// 	MaterialsBrowser:SetSize(scrw * 0.5, scrh * 0.5)
-// 	MaterialsBrowser:Center()
-// 	MaterialsBrowser:SetSizable(true)
-// 	MaterialsBrowser:MakePopup()
-// 	MaterialsBrowser:SetDeleteOnClose(true)
-// 	MaterialsBrowser:SetMinimumSize(120 , 100)
-
-// 	local tabs = vgui.Create('DPropertySheet', MaterialsBrowser)
-// 	local submitbtn = vgui.Create('DButton', MaterialsBrowser)
-
-// 	submitbtn:SetText('#fcmd.ui.submit')
-// 	tabs:Dock(FILL)
-// 	submitbtn:Dock(BOTTOM)
-// 	----
-// 	local addonMatBrowser = vgui.Create('DPanel', MaterialsBrowser)
-// 	local addonMatBrowserDiv = vgui.Create('DHorizontalDivider', addonMatBrowser)
-// 	local addonViewPort = vgui.Create('DPanel', addonMatBrowser)
-// 	local addonSelectPanel = vgui.Create('DPanel', addonMatBrowser)
-
-// 	local addonSearch = vgui.Create('DTextEntry', addonSelectPanel)
-// 	local addonTree = vgui.Create('DTree', addonSelectPanel)
-// 	local addonMat
-	
-// 	tabs:AddSheet('#fcmd.ui.title.addon', addonMatBrowser, 'icon16/bricks.png', false, false, '')
-// 	addonMatBrowser.Paint = emptyfunc
-
-// 	addonMatBrowserDiv:Dock(FILL)
-// 	addonMatBrowserDiv:SetLeft(addonSelectPanel)
-// 	addonMatBrowserDiv:SetRight(addonViewPort)
-// 	addonMatBrowserDiv:SetDividerWidth(4)
-// 	addonMatBrowserDiv:SetLeftMin(20) 
-// 	addonMatBrowserDiv:SetRightMin(20)
-// 	addonMatBrowserDiv:SetLeftWidth(scrw * 0.5 * 0.7)
-
-// 	function addonViewPort:Paint(w, h)
-// 		draw.RoundedBox(5, 0, 0, w, h, background)
-// 		if addonMat then
-// 			local matWidth = min(w, h)
-// 			local cx, cy = (w - matWidth) * 0.5, (h - matWidth) * 0.5
-// 			surface.SetDrawColor(255, 255, 255, 255)
-// 			surface.SetMaterial(addonMat)
-// 			surface.DrawTexturedRect(cx, cy, matWidth, matWidth)
-// 		end
-// 	end
-
-// 	addonSearch:Dock(TOP)
-// 	addonTree:Dock(FILL)
-
-// 	for _, addon in ipairs(engine.GetAddons()) do 
-// 		local file_ = addon.file
-// 		if file ~= '' then
-// 			local node = addonTree:AddNode(addon.title or '', 'icon16/page.png')
-// 			node.file = file_	
-// 		end
-// 	end
-
-// 	function addonTree:OnNodeSelected()
-// 		// local addonMat = AddonMaterial('895632296.gma')
-// 	end
-// 	----
-// 	local gameMatBrowser = vgui.Create('DPanel', MaterialsBrowser)
-// 	local gameViewPort = vgui.Create('DPanel', gameMatBrowser)
-// 	local gameMatFileBrowser = vgui.Create('DFileBrowser', gameMatBrowser)
-// 	local div = vgui.Create('DHorizontalDivider', gameMatBrowser)
-// 	local gamemat
-
-// 	tabs:AddSheet('#fcmd.ui.title.game', gameMatBrowser, 'materials/icon16/add.png', false, false, '')
-// 	gameMatBrowser.Paint = emptyfunc
-
-// 	div:Dock(FILL)
-// 	div:SetLeft(gameMatFileBrowser)
-// 	div:SetRight(gameViewPort)
-// 	div:SetDividerWidth(4)
-// 	div:SetLeftMin(20) 
-// 	div:SetRightMin(20)
-// 	div:SetLeftWidth(scrw * 0.5 * 0.7)
-
-
-// 	gameMatFileBrowser:SetPath('GAME') 
-// 	gameMatFileBrowser:SetBaseFolder('materials') 
-// 	gameMatFileBrowser:SetOpen(true) 
-
-// 	function gameViewPort:Paint(w, h)
-// 		draw.RoundedBox(5, 0, 0, w, h, background)
-// 		if selectmaterial then
-// 			local matWidth = min(w, h)
-// 			local cx, cy = (w - matWidth) * 0.5, (h - matWidth) * 0.5
-// 			surface.SetDrawColor(255, 255, 255, 255)
-// 			surface.SetMaterial(selectmaterial)
-// 			surface.DrawTexturedRect(cx, cy, matWidth, matWidth)
-// 		end
-// 	end
-
-// 	function gameMatFileBrowser:OnSelect(path, pnl) 
-// 		selectmaterial = Material(string.sub(path, 11, -1))
-// 	end
-
-// 	function gameMatFileBrowser:OnRightClick(filePath, selectedPanel) 
-// 		local menu = DermaMenu() 
-// 		menu:AddOption('#fcmd.ui.copy', function() SetClipboardText(filePath) end)
-// 		menu:AddOption('#fcmd.ui.apply', function()  end)
-		
-// 		menu:Open()
-// 	end
-
-// end
-
-// SoundBrowser = nil
-// local function OpenSoundBrowser()
-// 	if IsValid(SoundBrowser) then SoundBrowser:Remove() end
-
-// 	SoundBrowser = vgui.Create('DFrame')
-// 	SoundBrowser:SetTitle('#fcmd.ui.title.sound_browser')
-// 	SoundBrowser:SetPos(x or 0, y or 0)
-// 	SoundBrowser:SetSize(w or 500, h or 500)
-// 	SoundBrowser:SetSizable(true)
-// 	SoundBrowser:MakePopup()
-// 	SoundBrowser:SetDeleteOnClose(true)
-// 	SoundBrowser.soundobj = nil
-	
-// 	local browser = vgui.Create('DFileBrowser', SoundBrowser)
-// 	browser:Dock(FILL)
-// 	browser:SetPath('GAME') 
-// 	browser:SetBaseFolder('sound') 
-// 	browser:SetOpen(true) 
-
-// 	function browser:OnDoubleClick(path, _)
-// 		if SoundBrowser.soundobj then
-// 			SoundBrowser.soundobj:Stop()
-// 			SoundBrowser.soundobj = nil	
-// 		end
-// 		SoundBrowser.soundobj = CreateSound(LocalPlayer(), string.sub(path, 7, -1))
-// 		SoundBrowser.soundobj:PlayEx(1, 100)
-// 	end
-
-// 	function SoundBrowser:OnRemove()
-// 		if SoundBrowser.soundobj then
-// 			SoundBrowser.soundobj:Stop()
-// 			SoundBrowser.soundobj = nil	
-// 		end
-// 	end
-// end
-
-// OpenMaterialsBrowser(0, 0, 500, 500)
-// // OpenSoundBrowser(0, 0, 500, 500)
-
-// Editor = nil
-// local function OpenEditor(filename)
-// 	if IsValid(Editor) then Editor:Remove() end
-
-// 	local fcmddata, filename = fcmd_LoadFcmdDataFromFile(filename)
-// 	if not istable(fcmddata) then return end
-
-// 	local scrw, scrh = ScrW(), ScrH()
-
-// 	-- 编辑器窗口定义
-// 	Editor = vgui.Create('DFrame')
-// 	Editor:SetTitle('#fcmd.ui.title.editor')
-// 	Editor:SetSize(scrw * 0.6, scrh * 0.7)
-// 	Editor:Center()
-// 	Editor:SetSizable(true)
-// 	Editor:MakePopup()
-// 	Editor:SetDeleteOnClose(true)
-
-// 	function Editor:OnRemove()
-// 		fcmd_SaveFcmdDataToFile(fcmddata, filename, true)
-// 		fcmdm_ReloadCurrentFcmdData(filename)
-// 		if IsValid(SoundBrowser) then SoundBrowser:Remove() end
-// 		if IsValid(MaterialsBrowser) then MaterialsBrowser:Remove() end
-// 	end
-
-// 	-- 预览与编辑器主体定义
-// 	local ViewPort = vgui.Create('DPanel', Editor)
-// 	local Main = vgui.Create('DPanel', Editor)
-// 	local div = vgui.Create('DHorizontalDivider', Editor)
-	
-// 	div:Dock(FILL)
-// 	div:SetLeft(ViewPort)
-// 	div:SetRight(Main)
-// 	div:SetDividerWidth(4)
-// 	div:SetLeftMin(20) 
-// 	div:SetRightMin(20)
-// 	div:SetLeftWidth(250)
-	
-// 	ViewPort.fcmddata = fcmddata
-// 	Main.fcmddata = fcmddata
-
-// 	function ViewPort:Paint(w, h)
-// 		draw.RoundedBox(5, 0, 0, w, h, background)
-// 		if istable(self.fcmddata) then
-// 			local succ = SafeDrawHud2D(
-// 				self.size, 
-// 				self.fcmddata, 
-// 				1, 
-// 				self.previewtrans
-// 			)
-// 			if not succ then self.fcmddata = nil end
-// 		end
-// 	end
-
-// 	function ViewPort:OnSizeChanged(newWidth, newHeight)
-// 		self.previewtrans = {
-// 			x = 0,
-// 			y = 0,
-// 			w = newWidth,
-// 			h = newHeight,
-// 		}
-// 		self.size = min(newWidth, newHeight) * 0.5
-// 	end
-
-// 	Main.Paint = emptyfunc
-
-// 	-- 根属性编辑器与节点属性编辑器定义
-// 	local RootAttrs = vgui.Create('DPanel', Main)
-// 	local MetadataAttrs = vgui.Create('DPanel', Main)
-
-// 	local div2 = vgui.Create('DVerticalDivider', Main)
-	
-// 	div2:Dock(FILL)
-// 	div2:SetTop(RootAttrs)
-// 	div2:SetBottom(MetadataAttrs)
-// 	div2:SetDividerHeight(4)
-// 	div2:SetTopMin(20) 
-// 	div2:SetBottomMin(20)
-// 	div2:SetTopHeight(150)
-
-// 	local function CreateMaterialInput(label, parent)
-// 		local matinput = vgui.Create('DPanel', parent)
-// 		local label = vgui.Create('DLabel', matinput)
-// 		local txtinput = vgui.Create('DTextEntry', matinput)
-// 		local browserbtn = vgui.Create('DButton', matinput)
-
-// 		function matinput:OnSizeChanged(nw, nh)
-// 			label:SetPos(0, 0)
-// 			label:SetSize(0.2 * nw, nh)
-
-// 			txtinput:SetPos(0.2 * nw, 0)
-// 			txtinput:SetSize(0.6 * nw, nh)
-
-// 			browserbtn:SetPos(0.8 * nw, 0)
-// 			browserbtn:SetSize(0.2 * nw, nh)	 
-// 		end
-
-// 		browserbtn:SetText('#fcmd.ui.title.material_browser')
-// 		browserbtn.DoClick = function(self)
-// 			local x, y = self:LocalToScreen(0, 0)
-// 			OpenMaterialsBrowser(x, y - 250, 300, 300)
-// 		end
-
-// 		matinput.label = label
-// 		matinput.txtinput = txtinput
-
-// 		return matinput
-// 	end
-
-// 	-- 根属性编辑器部分
-// 	local ciconbtn = CreateMaterialInput('fcmd.ui.cicon', RootAttrs)
-
-// 	// local arrow = CreateMaterialInput(RootAttrs)
-// 	// local edge = CreateMaterialInput(RootAttrs)
-// 	// local transform3dbtn = vgui.Create('DButton', RootAttrs)
-// 	// local autoclip = vgui.Create('DButton', RootAttrs)
-// 	// local centersize = vgui.Create('DSlider', RootAttrs)
-// 	// local iconsize = vgui.Create('DSlider', RootAttrs)
-// 	// local fade = vgui.Create('DSlider', RootAttrs)
-
-// 	function RootAttrs:OnSizeChanged(nw, nh)
-// 		ciconbtn:SetPos(0, 0)
-// 		ciconbtn:SetSize(300, 20)
-
-// 		// arrow:SetPos(20, 0)
-// 		// arrow:SetSize(20, 20)
-
-// 		// edge:SetPos(40, 0)
-// 		// edge:SetSize(20, 20)
-
-// 		// transform3dbtn:SetPos(40, 0)
-// 		// transform3dbtn:SetSize(20, 20)
-// 	end
-// end
-// // OpenEditor('aaa')
-
-
