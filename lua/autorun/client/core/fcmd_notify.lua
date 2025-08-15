@@ -1,4 +1,5 @@
 local cl_fcmd_notify = CreateClientConVar('cl_fcmd_notify', '1', true, false)
+local phrase = language.GetPhrase
 
 function FcmdProgress(...)
 	if cl_fcmd_notify:GetBool() then

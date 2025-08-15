@@ -1,117 +1,117 @@
-include('cl_fcmd_core.lua')
-
 local Clamp = math.Clamp
-local Execute = fcmd_Execute
-local Break = fcmd_Break
-local DrawHud = fcmd_DrawHud
-local CheckSelect = fcmd_CheckSelect
 local pcall = pcall
-local ErrorNoHaltWithStack = ErrorNoHaltWithStack
-local FastError = fcmd_FastError
-local FastHelp = fcmd_FastHelp
+
+include('core/fcmd_wheel.lua')
+include('core/fcmd_execute.lua')
+include('core/fcmd_file.lua')
+local ExecuteCmd = FcmdExecuteCmd
+local ExecuteCall = FcmdExecuteCall
+local DrawWheel = FcmdDrawWheel
+local CheckSelect = FcmdCheckSelect
 -----------------------------
 local cl_fcmd_menu_size = CreateClientConVar('cl_fcmd_menu_size', '500', true, false)
 local cl_fcmd_expand_key = CreateClientConVar('cl_fcmd_expand_key', '0', true, false)
 local cl_fcmd_execute_key = CreateClientConVar('cl_fcmd_execute_key', '0', true, false)
 local cl_fcmd_break_key = CreateClientConVar('cl_fcmd_break_key', '0', true, false)
-local cl_fcmd_file = CreateClientConVar('cl_fcmd_file', '', true, false)
+local cl_fcmd_wfile = CreateClientConVar('cl_fcmd_wfile', 'fastcmd/wheel/chat.json', true, false)
 -----------------------------
-local fcmddata
-local function BreakCmd()
+local curwdata
+local function ExecuteBreak()
 	-- 执行中断命令
-	if not istable(fcmddata) then return end
-	Break(fcmddata.breakcmd)
+	if not istable(curwdata) then return end
+	ExecuteCmd(curwdata.breakcmd)
 end
 
 local expand = false
-local calldata
-local function ExpandUI(state)
+local curcall
+local function ExpandWheel(state)
 	-- 展开UI
-	if not istable(fcmddata) then
+	if not istable(curwdata) then
 		expand = false
 		return 
 	end
 
-	BreakCmd()
+	ExecuteBreak()
 	gui.EnableScreenClicker(state)
 	expand = state
 	
 	if state then
-		if isstring(fcmddata.soundexpand) and fcmddata.soundexpand ~= '' then
-			surface.PlaySound(fcmddata.soundexpand)
+		if isstring(curwdata.soundexpand) then
+			surface.PlaySound(curwdata.soundexpand)
 		end
 	else
-		if isstring(fcmddata.soundclose) and fcmddata.soundclose ~= '' then
-			surface.PlaySound(fcmddata.soundclose)
+		if isstring(curwdata.soundclose) then
+			surface.PlaySound(curwdata.soundclose)
 		end
 
 		-- 关闭时更改选中
-		local selectIdx = fcmddata.cache.selectIdx
+		local selectIdx = curwdata.cache.selectIdx
 		if selectIdx ~= nil and selectIdx ~= 0 then
-			fcmddata.cache.selectedIdx = selectIdx
-			calldata = fcmddata.metadata[selectIdx].call
+			curwdata.cache.selectedIdx = selectIdx
+			curcall = curwdata.metadata[selectIdx].call
 		end
-		fcmddata.cache.selectIdx = nil
+		curwdata.cache.selectIdx = nil
 	end
 end
 
-local function ExecuteSelected(state)
+local function ExecuteCurCall(state)
 	-- 执行选中
 	-- 展开ui时不执行
-	if expand or not istable(calldata) then return end
-	Execute(calldata, state)
+	if expand or not istable(curcall) then return end
+	ExecuteCall(curcall, state)
 end
 
-fcmdm_ExecuteSelected = ExecuteSelected
-fcmdm_ExpandUI = ExpandUI
-fcmdm_BreakCmd = BreakCmd
+FcmdmExecuteCurCall = ExecuteCurCall
+FcmdmExpandWheel = ExpandWheel
+FcmdmExecuteBreak = ExecuteBreak
 
-function fcmdm_GetCurrentFcmdData() return fcmddata end
-function fcmdm_SetCurrentFcmdData(target) fcmddata = target end
+function FcmdmGetCurWData() return curwdata end
+function FcmdmSetCurWData(target) curwdata = target end
 
-function fcmdm_GetCurrentCallData() return calldata end
-function fcmdm_SetCurrentCallData(target) calldata = target end
+function FcmdmGetCurCall() return curcall end
+function FcmdmSetCurCall(target) curcall = target end
 
-function fcmdm_GetExpand() return expand end
-function fcmdm_SetExpand(target) ExpandUI(target) end
+function FcmdmGetExpand() return expand end
+function FcmdmSetExpand(target) ExpandWheel(target) end
 
+function FcmdmLoadCurWData(filename)
+	LocalPlayer():ConCommand('cl_fcmd_wfile ""')
+	LocalPlayer():ConCommand('cl_fcmd_wfile '..filename)
+end
 
-cvars.AddChangeCallback('cl_fcmd_file', function(name, old, new) 
-	local newdata, _ = fcmd_LoadFcmdDataFromFile(new)
-	if istable(newdata) then 
-		if isstring(newdata.loadsound) and newdata.loadsound ~= '' then
-			surface.PlaySound(soundpath)
-		else
-			surface.PlaySound('Weapon_AR2.Reload_Push')
+function FcmdmReloadCurWData()
+	local filename = cl_fcmd_wfile:GetString()
+	LocalPlayer():ConCommand('cl_fcmd_wfile ""')
+	LocalPlayer():ConCommand('cl_fcmd_wfile '..filename)
+end
+
+function FcmdmClearCurWData()
+	LocalPlayer():ConCommand('cl_fcmd_wfile ""')
+end
+
+cvars.AddChangeCallback('cl_fcmd_wfile', function(name, old, new) 
+	if new ~= '' then
+		local newdata, _ = FcmdLoadWheelData(new)
+		if istable(newdata) then 
+			if isstring(newdata.loadsound) and newdata.loadsound ~= '' then
+				surface.PlaySound(soundpath)
+			else
+				surface.PlaySound('Weapon_AR2.Reload_Push')
+			end
 		end
 	end
 
-	fcmddata = newdata
-	calldata = nil
+	curwdata = newdata
+	curcall = nil
 end, 'aaa')
 
-function fcmdm_LoadCurrentFcmdData(filename)
-	LocalPlayer():ConCommand('cl_fcmd_file 0')
-	LocalPlayer():ConCommand('cl_fcmd_file '..filename)
-end
+concommand.Add('+fcmd_expand', function(ply) ExpandWheel(true) end)
+concommand.Add('-fcmd_expand', function(ply) ExpandWheel(false) end)
+concommand.Add('+fcmd_call', function(ply) ExecuteCurCall(true) end)
+concommand.Add('-fcmd_call', function(ply) ExecuteCurCall(false) end)
 
-function fcmdm_ReloadCurrentFcmdData()
-	local filename = cl_fcmd_file:GetString()
-	LocalPlayer():ConCommand('cl_fcmd_file 0')
-	LocalPlayer():ConCommand('cl_fcmd_file '..filename)
-end
-
-function fcmdm_ClearCurrentFcmdData()
-	LocalPlayer():ConCommand('cl_fcmd_file 0')
-end
-
-concommand.Add('+fcmd_expand', function(ply) ExpandUI(true) end)
-concommand.Add('-fcmd_expand', function(ply) ExpandUI(false) end)
-concommand.Add('+fcmd_execute', function(ply) ExecuteSelected(true) end)
-concommand.Add('-fcmd_execute', function(ply) ExecuteSelected(false) end)
-concommand.Add('fcmd_break', function(ply) BreakCmd() end)
-
-concommand.Add('test_example', function(ply, cmd, args) 
+concommand.Add('fcmd_break', function(ply) ExecuteBreak() end)
+concommand.Add('fcmd_example', function(ply, cmd, args) 
 	local msg = args[1] or 'Hello Workshop'
 	ply:EmitSound('friends/message.wav')
 	ply:PrintMessage(HUD_PRINTTALK, msg) 
@@ -125,7 +125,7 @@ local function ExpandKeyEvent()
 	if key == 0 then return end
 	local current = input.IsKeyDown(key) or input.IsMouseDown(key)
 	if expandKey ~= current then 
-		ExpandUI(current) 
+		ExpandWheel(current) 
 	end
 	expandKey = current
 end
@@ -137,7 +137,7 @@ local function ExecuteKeyEvent()
 	if key == 0 then return end
 	local current = input.IsKeyDown(key) or input.IsMouseDown(key)
 	if executeKey ~= current then 
-		ExecuteSelected(current) 
+		ExecuteCurCall(current) 
 	end
 	executeKey = current
 end
@@ -149,14 +149,14 @@ local function BreakKeyEvent()
 	if key == 0 then return end
 	local current = input.IsKeyDown(key) or input.IsMouseDown(key)
 	if current and breakKey ~= current then 
-		BreakCmd() 
+		ExecuteBreak() 
 	end
 	breakKey = current
 end
 
 concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 	hook.Add('Think', 'fcmd_think', function()
-		if not istable(fcmddata) then return end
+		if not istable(curwdata) then return end
 
 		-- 按键事件
 		ExpandKeyEvent()
@@ -166,24 +166,24 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 		if not expand then return end 
 
 		-- 检查选中
-		local rootcache = fcmddata.cache
+		local rootcache = curwdata.cache
 		local selectIdx = CheckSelect(
 			rootcache.centersize * cl_fcmd_menu_size:GetInt(), 
-			fcmddata
+			curwdata
 		)
 
 		-- 选中变化 (播放音效并触发事件)
 		if rootcache.selectIdx ~= selectIdx then
-			hook.Run('FcmdSelect', fcmddata.metadata[selectIdx])
+			hook.Run('FcmdSelect', curwdata.metadata[selectIdx])
 			if selectIdx == nil or selectIdx == 0 then
-				if isstring(fcmddata.soundgiveup) and fcmddata.soundgiveup ~= '' then
-					surface.PlaySound(fcmddata.soundgiveup)
+				if isstring(curwdata.soundgiveup) and curwdata.soundgiveup ~= '' then
+					surface.PlaySound(curwdata.soundgiveup)
 				else
 					surface.PlaySound('fastcmd/zoomout.wav')
 				end
 			else
-				if isstring(fcmddata.soundselect) and fcmddata.soundselect ~= '' then
-					surface.PlaySound(fcmddata.soundselect)
+				if isstring(curwdata.soundselect) and curwdata.soundselect ~= '' then
+					surface.PlaySound(curwdata.soundselect)
 				else
 					surface.PlaySound('fastcmd/zoomin.wav')
 				end
@@ -204,18 +204,17 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 		end
 		
 		-- 使用多个全局渲染设置, 异常时必须着重处理
-		local succ, err = pcall(DrawHud, cl_fcmd_menu_size:GetInt(), fcmddata, expandstate)
-		// fcmd_DrawBounds(cl_fcmd_menu_size:GetInt(), fcmddata)
+		local succ, err = pcall(DrawWheel, cl_fcmd_menu_size:GetInt(), curwdata, expandstate)
 		
 		if not succ then
 			ErrorNoHaltWithStack(err)
-			FastError('#fcmd.err.fatal', '#fcmd.err.hook_die')
+			FcmdError('#fcmd.err.fatal', '#fcmd.err.hook_die')
 
 			render.ClearStencil()
 			render.SetStencilEnable(false)
 			render.OverrideColorWriteEnable(false)
 			gui.EnableScreenClicker(false)
-			ExpandUI(false)
+			ExpandWheel(false)
 
 			hook.Remove('Think', 'fcmd_think')
 			hook.Remove('HUDPaint', 'fcmd_draw')
@@ -226,8 +225,8 @@ end)
 hook.Add('KeyPress', 'fcmd_init', function(ply, key)
 	if key == IN_FORWARD or key == IN_BACK then
 		LocalPlayer():ConCommand('fcmd_add_hook')
-		fcmdm_ReloadCurrentFcmdData()
-		FastHelp('#fcmd.help.use')
+		FcmdmReloadCurWData()
+		FcmdHelp('#fcmd.help.use')
 		hook.Remove('KeyPress', 'fcmd_init')
 	end
 end)

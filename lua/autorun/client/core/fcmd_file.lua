@@ -1,6 +1,5 @@
 include('fcmd_notify.lua')
 
-FcmdWheelDataRoot = 'fastcmd/wheel'
 local cicondefault = Material('fastcmd/hud/cicon.png')
 local arrowdefault = Material('fastcmd/hud/arrow.png')
 local icondefault = Material('fastcmd/hud/default.jpg')
@@ -13,15 +12,15 @@ local function numdefault(num, default)
 	return isnumber(num) and num or default
 end
 
-local function trim(str) 
-	if not isstring(str) then return '' end
-	return str:gsub('^%s+', ''):gsub('%s+$', '') 
+local function isjsonpath(filename)
+	local len = #filename
+	return len >= 5 and string.lower(string.sub(filename, len - 4, len)) == '.json'
 end
 ------------------------------
 function FcmdLoadMaterials(path, default)
 	-- 加载游戏目录或缓存目录的材质, 加载缓存目录材质
-	local prefix1 = string.sub(str, 1, 10)
-	local prefix2 = string.sub(str, 1, 6)
+	local prefix1 = string.sub(path, 1, 10)
+	local prefix2 = string.sub(path, 1, 6)
 	
 	if prefix1 == 'materials/' or prefix1 == 'materials\\' then
 		return Material(string.sub(path, 11))
@@ -79,18 +78,18 @@ function FcmdParseJSON2WheelData(json)
 	---- 变量边界
 
 	-- 比例、角度边界大小
-	local angbound = min(
-		twopi / max(#wdata.metadata, 1) * max(numdefault(wdata.iconsize, 0.5), 0), 
-		ang_120
+	local angbound = math.min(
+		math.pi * 2 / math.max(#wdata.metadata, 1) * math.max(numdefault(wdata.iconsize, 0.5), 0), 
+		math.pi * 0.667
 	)
 	
-	rootcache.fade = max(numdefault(wdata.fade, 100), 0)
-	rootcache.centersize = max(numdefault(wdata.centersize, 0.5), 0)
-	rootcache.iconsize = sin(angbound * 0.25) * 2
+	rootcache.fade = math.max(numdefault(wdata.fade, 100), 0)
+	rootcache.centersize = math.max(numdefault(wdata.centersize, 0.5), 0)
+	rootcache.iconsize = math.sin(angbound * 0.25) * 2
 	rootcache.rotate3d = numdefault(wdata.rotate3d, 10)
 
 	-- 生成位置、加载材质
-	local step = twopi / #wdata.metadata
+	local step = math.pi * 2 / #wdata.metadata
 	for i, node in pairs(wdata.metadata) do 
 		-- 元数据检测并修复
 		// if true then continue end
@@ -104,16 +103,16 @@ function FcmdParseJSON2WheelData(json)
 			i = 0
 		end
 
-		local ang = -halfpi + (i - 1) * step
+		local ang = -0.5 * math.pi + (i - 1) * step
 		local angleft = ang - 0.5 * angbound
 		local angright = ang + 0.5 * angbound
 
 		local nodecache = {
-			dir = Vector(cos(ang), sin(ang), 0),
+			dir = Vector(math.cos(ang), math.sin(ang), 0),
 			addlen = 0,
 			bounds = {
-				Vector(cos(angleft), sin(angleft), 0),
-				Vector(cos(angright), sin(angright), 0),
+				Vector(math.cos(angleft), math.sin(angleft), 0),
+				Vector(math.cos(angright), math.sin(angright), 0),
 			}
 		}
 
@@ -149,9 +148,20 @@ function FcmdDumpsWheelData2JSON(wdata)
 end
 ------------------------------ 
 function FcmdLoadWheelData(filepath)
-	-- 从文件中获取wheeldata
+	-- 从DATA目录下的文件中获取wheeldata
+	if not isjsonpath(filepath) then
+		FcmdError('#fcmd.err.load', filepath, '#fcmd.err.not_json_suffix')
+		return nil
+	end
+
+	if file.IsDir(filepath, 'DATA') then
+		FcmdError('#fcmd.err.load', filepath, '#fcmd.err.is_folder')
+
+		return nil
+	end
+
 	if not file.Exists(filepath, 'DATA') then
-		FcmdError('#fcmd.err.load', '#fcmd.err.file_not_exist')
+		FcmdError('#fcmd.err.load', filepath, '#fcmd.err.file_not_exist')
 		return nil
 	end
 
@@ -160,22 +170,39 @@ function FcmdLoadWheelData(filepath)
 end
 
 function FcmdSaveWheelData(wdata, filepath, override)
-	-- 保存wheeldata到文件
+	-- 保存wheeldata为DATA目录下的文件
+	if not isjsonpath(filepath) then
+		FcmdError('#fcmd.err.save', filepath, '#fcmd.err.not_json_suffix')
+		return false
+	end
+
+	if file.IsDir(filepath, 'DATA') then
+		FcmdError('#fcmd.err.save', filepath, '#fcmd.err.file_exist')
+		return false
+	end
+
 	if not override and file.Exists(filepath, 'DATA') then
-		FcmdError('#fcmd.err.save', '#fcmd.err.file_exist')
+		FcmdError('#fcmd.err.save', filepath, '#fcmd.err.file_exist')
 		return false
 	end
 
 	local json = FcmdDumpsWheelData2JSON(wdata)
-	file.Write(path, json)
+	file.Write(filepath, json)
 
 	return true
 end
 
-function FcmdDelete(filepath)
-	-- 删除数据文件
+function FcmdDeleteJsonFile(filepath)
+	-- 删除文件 (DATA任何json文件都能通过此删除, 注意安全)
+	if not isjsonpath(filepath) then
+		return true
+	end
 
 	if not file.Exists(filepath, 'DATA') then
+		return true
+	end
+
+	if file.IsDir(filepath, 'DATA') then
 		return true
 	end
 
@@ -183,40 +210,98 @@ function FcmdDelete(filepath)
 	return true
 end
 
-function FcmdCreateWheelDataFile(dirpath)
-	-- 新建wheeldata文件
+function FcmdCopyJsonFile(origin, target)
+	-- 拷贝 (DATA任何json文件都能通过此拷贝, 注意安全)
 
-	-- 检查暂停
-	if gui.IsGameUIVisible() then 
-		FcmdError('#fcmd.err.create', '#fcmd.err.pause')
-		return false
+	if not isjsonpath(origin) then
+		FcmdError('#fcmd.err.copy', origin, '#fcmd.err.not_json_suffix')
+		return nil
 	end
 
-	file.Write(dirpath..'/wnew'..tostring(os.time())..'.json', [[
+	if not isjsonpath(target) then
+		FcmdError('#fcmd.err.copy', target, '#fcmd.err.not_json_suffix')
+		return nil
+	end
+
+	if file.IsDir(origin, 'DATA') then
+		FcmdError('#fcmd.err.copy', origin, '#fcmd.err.is_folder')
+		return nil
+	end
+
+	if not file.Exists(origin, 'DATA') then
+		FcmdError('#fcmd.err.copy', origin, '#fcmd.err.file_not_exist')
+		return nil
+	end
+
+	local path = string.GetPathFromFilename(target)
+	local name = string.sub(string.sub(target, #path + 1, -1), 1, -6) 
+	local succ = false
+	for i = 0, 10 do
+		local newtarget = i == 0 and target or (path..name..' ('..i..').json')
+		if not file.Exists(newtarget, 'DATA') then
+			target = newtarget
+			succ = true
+			break
+		end
+	end
+
+	if succ then
+		file.Write(target, file.Read(origin, 'DATA'))
+	else
+		FcmdError('#fcmd.err.copy', target, '#fcmd.err.file_exist')
+	end
+	
+	return succ
+end
+
+function FcmdCreateWheelData(folder)
+	-- 创建新文件
+	folder = string.Trim(folder)
+	
+	if folder ~= '' and folder[-1] ~= '/' and folder[-1] ~= '\\' then
+		file.CreateDir(folder)
+		folder = folder..'/'
+	end
+	
+	local filepath = folder..'wnew_'..tostring(os.time())..'.json'
+
+	file.Write(
+		filepath, 
+		[[
 {
 	"autoclip": true,
 	"metadata": [
 		{
 			"call": {
-				"pexecute": "test_example \"Hello World\""
+				"pexecute": "fcmd_example \"Hello World\"",
+				"rexecute": "fcmd_example \"Good Bye World\""
 			},
 			"icon": "fastcmd/hud/world.jpeg"
 		},
 		{
 			"call": {
-				"pexecute": "test_example \"Hello Garry's Mod\""
+				"pexecute": "fcmd_example \"Hello Garry's Mod\"",
+				"rexecute": "fcmd_example \"Good Bye Garry's Mod\""
 			},
 			"icon": "fastcmd/hud/gmod.jpeg"
 		},
 		{
 			"call": {
-				"pexecute": "test_example \"Hello Workshop\""
+				"pexecute": "fcmd_example \"Hello Workshop\"",
+				"rexecute": "fcmd_example \"Good Bye Workshop\""
 			},
 			"icon": "fastcmd/hud/workshop.jpeg"
 		}
 	]
-}
-	]])
+}	
+		]]
+	)
 
-	return true
+	return filepath
+end
+
+if not file.Exists('fastcmd/wheel/chat.json', 'DATA') then
+	local filepath = FcmdCreateWheelData('fastcmd/wheel')
+	file.Rename(filepath, 'fastcmd/wheel/chat.json')
+	print('创建 fastcmd/wheel/chat.json')
 end

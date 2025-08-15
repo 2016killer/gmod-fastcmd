@@ -1,367 +1,128 @@
 
-include('cl_fcmd_core.lua')
+include('../core/fcmd_file.lua')
 local rootpath = 'fastcmd'
-local min = math.min
-local max = math.max
-local DrawHud2D = fcmd_DrawHud2D
+local min, max = math.min, math.max
+local FcmdDrawWheel2D = FcmdDrawWheel2D
 
-local function SafeDrawHud2D(size, fcmddata, state, preview)
-	local succ, err = pcall(DrawHud2D, size, fcmddata, state, preview)
-	if not succ then
-		ErrorNoHaltWithStack(err)
-		fcmd_FastError('#fcmd.err.fatal', '#fcmd.err.data')
+// local function SafeDrawHud2D(size, fcmddata, state, preview)
+// 	local succ, err = pcall(FcmdDrawWheel2D, size, fcmddata, state, preview)
+// 	if not succ then
+// 		ErrorNoHaltWithStack(err)
+// 		FcmdError('#fcmd.err.fatal', '#fcmd.err.data')
 
-		render.ClearStencil()
-		render.SetStencilEnable(false)
-		render.OverrideColorWriteEnable(false)
-		gui.EnableScreenClicker(false)
-	end
-	return succ
-end
+// 		render.ClearStencil()
+// 		render.SetStencilEnable(false)
+// 		render.OverrideColorWriteEnable(false)
+// 		gui.EnableScreenClicker(false)
+// 	end
+// 	return succ
+// end
 
-local background = Color(255, 255, 255, 200)
-local function emptyfunc() end
 --------------------------------
-local function CreateDialog(title, placeholder)
-	local dialog = vgui.Create('DFrame')
-
-	dialog:SetTitle(title)
-	dialog:SetSize(250, 100)
-	dialog:Center()
-	dialog:SetDraggable(true)
-	dialog:SetVisible(true)
-	dialog:SetSizable(true)
-	dialog:ShowCloseButton(true)
-	dialog:SetDeleteOnClose(true)
-
-	placeholder = placeholder or ''
-	local textinput = vgui.Create('DTextEntry', dialog)
-	textinput:SetPos(50, 30)
-	textinput:SetSize(150, 20)
-	textinput:SetPlaceholderText(placeholder)
-	dialog.textinput = textinput
-	function dialog:GetInput()
-		return self.textinput:GetText()
-	end
-
-
-	local submitbtn = vgui.Create('DButton', dialog)
-	submitbtn:SetPos(50, 60)
-	submitbtn:SetSize(50, 20)
-	submitbtn:SetText('#fcmd.ui.submit')
-	submitbtn.DoClick = function() 
-		if isfunction(dialog.SubmitCall) and dialog:SubmitCall() then
-			dialog:Remove() 
-		end
-	end
-	dialog.submitbtn = submitbtn
-
-
-	local canclebtn = vgui.Create('DButton', dialog)
-	canclebtn:SetPos(150, 60)
-	canclebtn:SetSize(50, 20)
-	canclebtn:SetText('#fcmd.ui.cancle')
-    canclebtn.DoClick = function() dialog:Remove() end
-	dialog.canclebtn = canclebtn
-
-	dialog:MakePopup()
-	dialog:SetKeyBoardInputEnabled(true)
-    return dialog
-end
---------------------------------
-local FcmdDataBrowser
-local FcmdDataBaseFolder = 'data'
-
-function OpenFcmdDataBrowser(parent)
+local WheelDataBrowser
+function CreateWheelDataBrowser(parent)
 	-- 数据列表
-	if IsValid(FcmdDataBrowser) then FcmdDataBrowser:Remove() end
-
-	FcmdDataBrowser = vgui.Create('DPanel', parent)
-	FcmdDataBrowser:Dock(FILL)
-
-	local SearchInput = vgui.Create('DTextEntry', FcmdDataBrowser)
-	local RefreshBtn = vgui.Create('DButton', FcmdDataBrowser)
-
-	
-	// SearchInput:Dock(TOP)
-	// RefreshBtn:Dock(LEFT)
+	if not IsValid(parent) then return end
+	if IsValid(WheelDataBrowser) then WheelDataBrowser:Remove() end
 
 
-	// local FileBrowser = vgui.Create('DFileBrowser', FcmdDataBrowser)
-	// FileBrowser:Dock(FILL)
-	// FileBrowser:SetPath('GAME') 
-	// FileBrowser:SetBaseFolder('addons') 
-	// FileBrowser:SetOpen(true) 
+	local CreateNewBtn = vgui.Create('DButton', parent)
+	CreateNewBtn:SetWidth(parent:GetWide())
+	CreateNewBtn:SetText('#fcmd.ui.create')
+	CreateNewBtn:Dock(BOTTOM)
+	CreateNewBtn:DockMargin(0, 5, 0, 5)
 
-	// local title = vgui.Create('DLabel', self)
-	// title:SetColor(Color(0, 0, 0))
-	// self.title = title
+	local EditorBtn = vgui.Create('DButton', parent)
+	EditorBtn:SetWidth(parent:GetWide())
+	EditorBtn:SetText('#fcmd.ui.editor')
+	EditorBtn:Dock(BOTTOM)
+	EditorBtn:DockMargin(0, 5, 0, 5)
 
-	// -- 编辑器按钮
-	// local editorbtn = vgui.Create('DButton', self)
-	// editorbtn:SetText('#fcmd.ui.editor')
-	// self.editorbtn = editorbtn
+	WheelDataBrowser = vgui.Create('DPanel', parent)
+	WheelDataBrowser:Dock(FILL)
+	WheelDataBrowser:DockMargin(5, 5, 5, 5)
 
-	// -- 创建按钮
-	// local createbtn = vgui.Create('DButton', self)
-	// createbtn:SetText('#fcmd.ui.create')
-	// self.createbtn = createbtn
+	local SearchPanel = vgui.Create('DPanel', WheelDataBrowser)
+	SearchPanel:SetHeight(20)
+	SearchPanel:Dock(TOP)
+	SearchPanel:DockMargin(5, 5, 5, 5)
 
-	// -- 另存为按钮
-	// local saveasbtn = vgui.Create('DButton', self)
-	// saveasbtn:SetText('#fcmd.ui.saveas')
-	// saveasbtn.state = 0
-	// self.saveasbtn = saveasbtn
+	local RefreshBtn = vgui.Create('DImageButton', SearchPanel)
+	RefreshBtn:SetWidth(20)
+	RefreshBtn:Dock(RIGHT)
+	RefreshBtn:SetImage('icon16/arrow_refresh.png')
 
-	// -- 删除按钮
-	// local deletebtn = vgui.Create('DButton', self)
-	// deletebtn:SetText('#fcmd.ui.delete')
-	// deletebtn:SetTextColor(Color(255, 100, 50, 255))
-	// self.deletebtn = deletebtn
+	local SearchInput = vgui.Create('DTextEntry', SearchPanel)
+	SearchInput:Dock(FILL)
+	SearchInput:DockMargin(0, 0, 5, 0)
 
-	// -- 预览按钮
-	// local previewbtn = vgui.Create('DButton', self)
-	// previewbtn:SetText('#fcmd.ui.enable_preview')
-	// self.previewbtn = previewbtn
+	local FileBrowser = vgui.Create('DFileBrowser', WheelDataBrowser)
+	FileBrowser:Dock(FILL)
+	FileBrowser:SetPath('DATA') 
+	FileBrowser:SetBaseFolder('fastcmd') 
+	FileBrowser:SetOpen(true) 
 
+	function FileBrowser:OnRightClick(filePath, selectedPanel) 
+		local menu = DermaMenu() 
 
-	// self:SelectFile()
-	// self.saveAsState = 0
-
-	// -- 列表更新
-	// datalist.UpdateFileList = function() 
-	// 	datalist:Clear()
-
-	// 	local files = file.Find(rootpath..'/*.json', 'DATA')
-	// 	if #files < 1 then return end
-
-	// 	local activefile = GetConVar('cl_fcmd_file'):GetString()
-	// 	for _, filename in pairs(files) do
-	// 		filename = string.sub(filename, 1, -6)
-	// 		local icon
-	// 		if filename == activefile then
-	// 			icon = 'icon16/tick.png'
-	// 		elseif file.Exists('materials/fastcmd/thumbnail/'..filename..'.png', 'GAME') then
-	// 			icon = 'fastcmd/thumbnail/'..filename..'.png'
-	// 		else
-	// 			icon = 'icon16/page.png'
-	// 		end
-
-	// 		local node = datalist:AddNode(filename, icon)	
-	// 		node.filename = filename
-	// 	end
-	// end
-
-	// -- 列表选择事件
-	// datalist.OnNodeSelected = function()
-	// 	-- 双击检查
-	// 	local filename = datalist:GetSelectedItem().filename
-	// 	if filename == self:GetSelectFile() and CurTime() - (datalist.clicktime or 0) < 0.3 then
-	// 		self:DoubleSelect(filename)
-	// 	end
-	// 	datalist.clicktime = CurTime()
-	// 	self:SelectFile(filename)
-	// end
-
-	// -- 编辑器按钮回调
-	// editorbtn.DoClick = function()
-	// end
-
-	// -- 创建按钮回调
-	// createbtn.DoClick = function()
-	// 	local dialog = CreateDialog('#fcmd.ui.title.name', '#fcmd.ui.placeholder.name')
+		local apply = menu:AddOption('#fcmd.ui.apply', function() end)
+		apply:SetImage('materials/icon16/application_lightning.png')
 		
-	// 	dialog.SubmitCall = function() 
-	// 		local filename = dialog:GetInput()
-	// 		return self:Create(filename) 
-	// 	end
+		menu:AddSpacer()
+		
+		local copy = menu:AddOption('#fcmd.ui.copy', function() end)
+		copy:SetImage('materials/icon16/application_double.png')
+
+		local copyclip = menu:AddOption('#fcmd.ui.copy_to_clipboard', function() SetClipboardText(filePath) end)
+		copyclip:SetImage('materials/icon16/application_double.png')
+		
+		menu:AddSpacer()
+		
+		local edit = menu:AddOption('#fcmd.ui.edit', function() end)
+		edit:SetImage('materials/icon16/application_edit.png')
+
+		local delete = menu:AddOption('#fcmd.ui.delete', function() end)
+		delete:SetImage('materials/icon16/application_delete.png')
+
+		menu:Open()
+	end
+
+	function FileBrowser:OnSelect(filePath, _)
+		WheelDataBrowser.OpenPath = string.GetPathFromFilename(filePath)
+	end
+
+	// function PANEL:DoClick()
+	// 	self:SetOpenPath(string.GetPathFromFilename(file))
+
+	// 	local file = self:GetOpenFile()
+	// 	local page = self:GetPage()
+
+	// 	self.bSetup = self:Setup()
+
+	// 	self:SetOpenFile(file)
+	// 	self:SetPage(page)
 	// end
 
-	// -- 另存为按钮回调
-	// saveasbtn.DoClick = function()
-	// 	self.saveAsState = 0
-	// 	if self:GetSelectFile() == '' then
-	// 		fcmd_FastError('#fcmd.err.saveas', '#fcmd.err.unselect')
-	// 		return
-	// 	end
 
-	// 	local origin = self:GetSelectFile()
-	// 	local dialog = CreateDialog('#fcmd.ui.title.saveas', '#fcmd.ui.placeholder.name')
-	// 	dialog.SubmitCall = function()
-	// 		local target = dialog:GetInput()
-	// 		return self:SaveAs(origin, target)
-	// 	end
-	// end	
+	function FileBrowser:OnDoubleClick(filePath, _)
+		print(filePath)
+	end
 
-	// -- 删除按钮回调
-	// deletebtn.DoClick = function()
-	// 	if self:GetSelectFile() == '' then
-	// 		fcmd_FastError('#fcmd.err.delete', '#fcmd.err.unselect')
-	// 		return
-	// 	end
 
-	// 	return self:Delete(self:GetSelectFile())
-	// end
-
-	// -- 预览按钮回调
-	// previewbtn.DoClick = function()
-	// 	self.preview = !self.preview
-	// 	if self.preview then
-	// 		previewbtn:SetText('#fcmd.ui.disable_preview')
-	// 		local filename = self:GetSelectFile()
-	// 		if filename ~= '' then
-	// 			self.fcmddata, _ = fcmd_LoadFcmdDataFromFile(filename)
-	// 		end
-	// 	else
-	// 		previewbtn:SetText('#fcmd.ui.enable_preview')
-	// 		self.fcmddata = nil
-	// 	end
-	// end
-
-	FcmdDataBrowser:MakePopup()
-	FcmdDataBrowser:SetKeyBoardInputEnabled(true)
+	// WheelDataBrowser:MakePopup()
+	// WheelDataBrowser:SetKeyBoardInputEnabled(true)
+	return WheelDataBrowser
 end
 local frame = vgui.Create('DFrame')
 frame:SetSize(500, 500)
 frame:Center()
 frame:MakePopup()
 frame:SetKeyBoardInputEnabled(true)
-OpenFcmdDataBrowser(frame)
+frame:SetSizable(true)
+CreateWheelDataBrowser(frame)
 
 
 // --------------------------------
-// local FastCmdDataManager = {}
-// function FastCmdDataManager:Init()
-// 	-- 数据列表
-// 	local datalist = vgui.Create('DTree', self)
-// 	self.datalist = datalist
-
-// 	local title = vgui.Create('DLabel', self)
-// 	title:SetColor(Color(0, 0, 0))
-// 	self.title = title
-
-// 	-- 编辑器按钮
-// 	local editorbtn = vgui.Create('DButton', self)
-// 	editorbtn:SetText('#fcmd.ui.editor')
-// 	self.editorbtn = editorbtn
-
-// 	-- 创建按钮
-// 	local createbtn = vgui.Create('DButton', self)
-// 	createbtn:SetText('#fcmd.ui.create')
-// 	self.createbtn = createbtn
-
-// 	-- 另存为按钮
-// 	local saveasbtn = vgui.Create('DButton', self)
-// 	saveasbtn:SetText('#fcmd.ui.saveas')
-// 	saveasbtn.state = 0
-// 	self.saveasbtn = saveasbtn
-
-// 	-- 删除按钮
-// 	local deletebtn = vgui.Create('DButton', self)
-// 	deletebtn:SetText('#fcmd.ui.delete')
-// 	deletebtn:SetTextColor(Color(255, 100, 50, 255))
-// 	self.deletebtn = deletebtn
-
-// 	-- 预览按钮
-// 	local previewbtn = vgui.Create('DButton', self)
-// 	previewbtn:SetText('#fcmd.ui.enable_preview')
-// 	self.previewbtn = previewbtn
-
-
-// 	self:SelectFile()
-// 	self.saveAsState = 0
-
-// 	-- 列表更新
-// 	datalist.UpdateFileList = function() 
-// 		datalist:Clear()
-
-// 		local files = file.Find(rootpath..'/*.json', 'DATA')
-// 		if #files < 1 then return end
-
-// 		local activefile = GetConVar('cl_fcmd_file'):GetString()
-// 		for _, filename in pairs(files) do
-// 			filename = string.sub(filename, 1, -6)
-// 			local icon
-// 			if filename == activefile then
-// 				icon = 'icon16/tick.png'
-// 			elseif file.Exists('materials/fastcmd/thumbnail/'..filename..'.png', 'GAME') then
-// 				icon = 'fastcmd/thumbnail/'..filename..'.png'
-// 			else
-// 				icon = 'icon16/page.png'
-// 			end
-
-// 			local node = datalist:AddNode(filename, icon)	
-// 			node.filename = filename
-// 		end
-// 	end
-
-// 	-- 列表选择事件
-// 	datalist.OnNodeSelected = function()
-// 		-- 双击检查
-// 		local filename = datalist:GetSelectedItem().filename
-// 		if filename == self:GetSelectFile() and CurTime() - (datalist.clicktime or 0) < 0.3 then
-// 			self:DoubleSelect(filename)
-// 		end
-// 		datalist.clicktime = CurTime()
-// 		self:SelectFile(filename)
-// 	end
-
-// 	-- 编辑器按钮回调
-// 	editorbtn.DoClick = function()
-// 	end
-
-// 	-- 创建按钮回调
-// 	createbtn.DoClick = function()
-// 		local dialog = CreateDialog('#fcmd.ui.title.name', '#fcmd.ui.placeholder.name')
-		
-// 		dialog.SubmitCall = function() 
-// 			local filename = dialog:GetInput()
-// 			return self:Create(filename) 
-// 		end
-// 	end
-
-// 	-- 另存为按钮回调
-// 	saveasbtn.DoClick = function()
-// 		self.saveAsState = 0
-// 		if self:GetSelectFile() == '' then
-// 			fcmd_FastError('#fcmd.err.saveas', '#fcmd.err.unselect')
-// 			return
-// 		end
-
-// 		local origin = self:GetSelectFile()
-// 		local dialog = CreateDialog('#fcmd.ui.title.saveas', '#fcmd.ui.placeholder.name')
-// 		dialog.SubmitCall = function()
-// 			local target = dialog:GetInput()
-// 			return self:SaveAs(origin, target)
-// 		end
-// 	end	
-
-// 	-- 删除按钮回调
-// 	deletebtn.DoClick = function()
-// 		if self:GetSelectFile() == '' then
-// 			fcmd_FastError('#fcmd.err.delete', '#fcmd.err.unselect')
-// 			return
-// 		end
-
-// 		return self:Delete(self:GetSelectFile())
-// 	end
-
-// 	-- 预览按钮回调
-// 	previewbtn.DoClick = function()
-// 		self.preview = !self.preview
-// 		if self.preview then
-// 			previewbtn:SetText('#fcmd.ui.disable_preview')
-// 			local filename = self:GetSelectFile()
-// 			if filename ~= '' then
-// 				self.fcmddata, _ = fcmd_LoadFcmdDataFromFile(filename)
-// 			end
-// 		else
-// 			previewbtn:SetText('#fcmd.ui.enable_preview')
-// 			self.fcmddata = nil
-// 		end
-// 	end
-// end
-
 // function FastCmdDataManager:SelectFile(filename)
 // 	filename = isstring(filename) and filename or ''
 // 	self.selectfile = filename
@@ -418,13 +179,13 @@ OpenFcmdDataBrowser(frame)
 // function FastCmdDataManager:Delete(filename)
 // 	self.deleteState = self.deleteState + 1
 // 	if self.deleteState == 1 then
-// 		fcmd_FastWarn('#fcmd.warn.delete')
+// 		FcmdWarn('#fcmd.warn.delete')
 // 		return false
 // 	elseif self.deleteState >= 2 then
 // 		self.deleteState = 0
 // 		local succ, _ = fcmd_Delete(filename)
 // 		if succ then
-// 			LocalPlayer():ConCommand('cl_fcmd_file 0')
+// 			LocalPlayer():ConCommand('cl_fcmd_wfile ""')
 // 			surface.PlaySound('Buttons.snd15')
 // 			self:UpdateFileList()
 // 		end
@@ -436,7 +197,7 @@ OpenFcmdDataBrowser(frame)
 // function FastCmdDataManager:UpdateFileList()
 // 	self:SelectFile()
 // 	timer.Simple(0.5, self.datalist.UpdateFileList)
-// 	fcmd_FastProgress('#fcmd.ui.loading')
+// 	FcmdProgress('#fcmd.ui.loading')
 // end
 
 // function FastCmdDataManager:OnSizeChanged(newWidth, newHeight)

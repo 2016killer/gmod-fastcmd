@@ -5,7 +5,7 @@ local convars = {
 	cl_fcmd_expand_key = 0,
 	cl_fcmd_execute_key = 0,
 	cl_fcmd_break_key = 0,
-	cl_fcmd_file = '',
+	cl_fcmd_wfile = 'fastcmd/wheel/chat.json',
 	cl_fcmd_notify = 1
 }
 
@@ -16,7 +16,6 @@ end
 
 local phrase = language.GetPhrase
 -------------------------菜单
- 
 hook.Add('PopulateToolMenu', 'fcmd_menu', function()
 	spawnmenu.AddToolMenuOption(
 		'Utilities', 
@@ -47,13 +46,15 @@ hook.Add('PopulateToolMenu', 'fcmd_menu', function()
 				'cl_fcmd_break_key'
 			)
 
-			local fcmddataManager = vgui.Create('FastCmdDataManager', panel)
-			fcmddataManager:SetHeight(250)
-			fcmddataManager:UpdateFileList()
-			panel:AddItem(fcmddataManager)
-			cvars.AddChangeCallback('cl_fcmd_file', function(name, old, new) 
-				fcmddataManager:UpdateFileList()
-			end, 'bbb')
+			// local body = vgui.Create('DPanel', panel)
+			// body:SetHeight(250)
+			// panel:AddItem(body)
+			// CreateWheelDataBrowser(body)
+			// fcmddataManager:UpdateFileList()
+		
+			// cvars.AddChangeCallback('cl_fcmd_wfile', function(name, old, new) 
+			// 	fcmddataManager:UpdateFileList()
+			// end, 'bbb')
 			
 			panel:Button(phrase('fcmd.cmd.add_hook'), 'fcmd_add_hook')
 			panel:CheckBox(phrase('fcmd.var.notify'), 'cl_fcmd_notify')
