@@ -15,8 +15,7 @@ local cicondefault = Material('fastcmd/hud/cicon.png')
 local arrowdefault = Material('fastcmd/hud/arrow.png')
 local icondefault = Material('fastcmd/hud/default.png')
 local circlemask = Material('fastcmd/hud/circlemask')
-local edge = Material('fastcmd/hud/edge.png')
-local edgecolordefault = {r = 255, g = 255, b = 255, a = 255}
+local edgedefault = Material('fastcmd/hud/edge.png')
 local transform3ddefault = {enable = true, ang = 10, depth = 1200}
 local cl_fcmd_notify = CreateClientConVar('cl_fcmd_notify', '1', true, false)
 
@@ -95,7 +94,20 @@ local function SaveAsWarn(...) FastWarn('#fcmd.warn.saveas', ...) end
 
 local function IsFileNameEmpty(filename) return filename == '' or filename == '0' end
 
+
 ------------------------------
+function fcmd_LoadMaterials(path)
+	local prefix1 = string.sub(str, 1, 10)
+	local prefix2 = string.sub(str, 1, 6)
+	if prefix1 == 'materials/' or prefix1 == 'materials\\' then
+		return Material(string.sub(path, 11))
+	elseif prefix2 == 'cache/' or prefix2 == 'cache\\' then
+		return AddonMaterial(string.sub(path, 7))
+	else
+		return Material(path)
+	end
+end
+
 function fcmd_DrawHud2D(size, fcmddata, state, preview)
 	-- 绘制 HUD
 	-- size 菜单尺寸 (直径)
@@ -189,10 +201,9 @@ function fcmd_DrawHud2D(size, fcmddata, state, preview)
 
 	-- 绘制边缘
 	if fcmddata.autoclip then 
-		local color = rootcache.edgecolor
 		render.SetStencilEnable(false)
-		surface.SetDrawColor(color.r, color.g, color.b, color.a)
-		surface.SetMaterial(edge)
+		surface.SetDrawColor(255, 255, 255, 255)
+		surface.SetMaterial(rootcache.edge)
 
 		for i, data in ipairs(fcmddata.metadata) do	 
 			local cache = data.cache
@@ -277,6 +288,11 @@ function fcmd_ParseJSONToFcmdData(json)
 	else
 		rootcache.arrow = arrowdefault
 	end
+	if isstring(fcmddata.edge) and fcmddata.edge ~= '' then
+		rootcache.edge = Material(fcmddata.edge)
+	else
+		rootcache.edge = edgedefault
+	end
 
 	---- 变量边界
 
@@ -289,13 +305,6 @@ function fcmd_ParseJSONToFcmdData(json)
 	rootcache.fade = max(fcmddata.fade or 100, 0)
 	rootcache.centersize = max(fcmddata.centersize or 0.5, 0)
 	rootcache.iconsize = sin(angbound * 0.25) * 2
-
-	-- 边缘颜色参数
-	rootcache.edgecolor = istable(fcmddata.edgecolor) and fcmddata.edgecolor or edgecolordefault
-	rootcache.edgecolor.r = Clamp(rootcache.edgecolor.r or 0, 0, 255) 
-	rootcache.edgecolor.g = Clamp(rootcache.edgecolor.g or 0, 0, 255) 
-	rootcache.edgecolor.b = Clamp(rootcache.edgecolor.b or 0, 0, 255) 
-	rootcache.edgecolor.a = Clamp(rootcache.edgecolor.a or 255, 0, 255) 
 
 	-- 3D变换参数
 	rootcache.transform3d = istable(fcmddata['3dtransform']) and fcmddata['3dtransform'] or transform3ddefault
@@ -378,7 +387,7 @@ function fcmd_LoadFcmdDataFromFile(filename)
 	end
 
 	local json = file.Read(path, 'DATA')	
-	return fcmd_ParseJSONToFcmdData(json)
+	return fcmd_ParseJSONToFcmdData(json), filename
 end
 
 
@@ -400,7 +409,7 @@ function fcmd_SaveFcmdDataToFile(fcmddata, filename, override)
 	local json = fcmd_DumpsFcmdDataToJSON(fcmddata)
 	file.Write(path, json)
 
-	return true
+	return true, filename
 end
 
 function fcmd_SaveAsProgress(filename, warn)
@@ -415,10 +424,10 @@ function fcmd_SaveAsProgress(filename, warn)
 		return false
 	elseif file.Exists(path, 'DATA') then
 		if warn then SaveAsWarn('#fcmd.warn.override') end
-		return 1
+		return 1, filename
 	end
 
-	return 2
+	return 2, filename
 end
 
 
@@ -443,7 +452,7 @@ function fcmd_SaveAs(origin, target)
 	local json = file.Read(originPath, 'DATA') or ''
 	file.Write(targetPath, json)
 
-	return true
+	return true, target
 end
 
 function fcmd_Delete(filename)
@@ -460,7 +469,7 @@ function fcmd_Delete(filename)
 	end
 
 	file.Delete(path)
-	return true
+	return true, filename
 end
 ------------------------------
 

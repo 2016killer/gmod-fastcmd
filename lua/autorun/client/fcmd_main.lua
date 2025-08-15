@@ -10,6 +10,12 @@ local ErrorNoHaltWithStack = ErrorNoHaltWithStack
 local FastError = fcmd_FastError
 local FastHelp = fcmd_FastHelp
 -----------------------------
+local cl_fcmd_menu_size = CreateClientConVar('cl_fcmd_menu_size', '500', true, false)
+local cl_fcmd_expand_key = CreateClientConVar('cl_fcmd_expand_key', '0', true, false)
+local cl_fcmd_execute_key = CreateClientConVar('cl_fcmd_execute_key', '0', true, false)
+local cl_fcmd_break_key = CreateClientConVar('cl_fcmd_break_key', '0', true, false)
+local cl_fcmd_file = CreateClientConVar('cl_fcmd_file', '', true, false)
+-----------------------------
 local fcmddata
 local function BreakCmd()
 	-- 执行中断命令
@@ -69,6 +75,36 @@ function fcmdm_SetCurrentCallData(target) calldata = target end
 function fcmdm_GetExpand() return expand end
 function fcmdm_SetExpand(target) ExpandUI(target) end
 
+
+cvars.AddChangeCallback('cl_fcmd_file', function(name, old, new) 
+	local newdata, _ = fcmd_LoadFcmdDataFromFile(new)
+	if istable(newdata) then 
+		if isstring(newdata.loadsound) and newdata.loadsound ~= '' then
+			surface.PlaySound(soundpath)
+		else
+			surface.PlaySound('Weapon_AR2.Reload_Push')
+		end
+	end
+
+	fcmddata = newdata
+	calldata = nil
+end, 'aaa')
+
+function fcmdm_LoadCurrentFcmdData(filename)
+	LocalPlayer():ConCommand('cl_fcmd_file 0')
+	LocalPlayer():ConCommand('cl_fcmd_file '..filename)
+end
+
+function fcmdm_ReloadCurrentFcmdData()
+	local filename = cl_fcmd_file:GetString()
+	LocalPlayer():ConCommand('cl_fcmd_file 0')
+	LocalPlayer():ConCommand('cl_fcmd_file '..filename)
+end
+
+function fcmdm_ClearCurrentFcmdData()
+	LocalPlayer():ConCommand('cl_fcmd_file 0')
+end
+
 concommand.Add('+fcmd_expand', function(ply) ExpandUI(true) end)
 concommand.Add('-fcmd_expand', function(ply) ExpandUI(false) end)
 concommand.Add('+fcmd_execute', function(ply) ExecuteSelected(true) end)
@@ -77,16 +113,10 @@ concommand.Add('fcmd_break', function(ply) BreakCmd() end)
 
 concommand.Add('test_example', function(ply, cmd, args) 
 	local msg = args[1] or 'Hello Workshop'
-	ply:EmitSound('Buttons.snd15')
+	ply:EmitSound('friends/message.wav')
 	ply:PrintMessage(HUD_PRINTTALK, msg) 
 end)
 
------------------------------
-local cl_fcmd_menu_size = CreateClientConVar('cl_fcmd_menu_size', '500', true, false)
-local cl_fcmd_expand_key = CreateClientConVar('cl_fcmd_expand_key', '0', true, false)
-local cl_fcmd_execute_key = CreateClientConVar('cl_fcmd_execute_key', '0', true, false)
-local cl_fcmd_break_key = CreateClientConVar('cl_fcmd_break_key', '0', true, false)
-local cl_fcmd_file = CreateClientConVar('cl_fcmd_file', '', true, false)
 -----------------------------
 local expandKey = false
 local function ExpandKeyEvent()
@@ -123,8 +153,6 @@ local function BreakKeyEvent()
 	end
 	breakKey = current
 end
-
-
 
 concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 	hook.Add('Think', 'fcmd_think', function()
@@ -195,13 +223,10 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 	end)
 end)
 
-
-
 hook.Add('KeyPress', 'fcmd_init', function(ply, key)
 	if key == IN_FORWARD or key == IN_BACK then
 		LocalPlayer():ConCommand('fcmd_add_hook')
-		fcmddata = fcmd_LoadFcmdDataFromFile(cl_fcmd_file:GetString())
-		if istable(fcmddata) then surface.PlaySound('Weapon_AR2.Reload_Push') end
+		fcmdm_ReloadCurrentFcmdData()
 		FastHelp('#fcmd.help.use')
 		hook.Remove('KeyPress', 'fcmd_init')
 	end

@@ -13,12 +13,10 @@ for k, v in pairs(convars) do
 	CreateClientConVar(k, tostring(v), true, false)
 end
 
--------------------------
+
 local phrase = language.GetPhrase
-
-
 -------------------------菜单
-local fcmddataManager
+ 
 hook.Add('PopulateToolMenu', 'fcmd_menu', function()
 	spawnmenu.AddToolMenuOption(
 		'Utilities', 
@@ -49,10 +47,13 @@ hook.Add('PopulateToolMenu', 'fcmd_menu', function()
 				'cl_fcmd_break_key'
 			)
 
-			fcmddataManager = vgui.Create('FastCmdDataManager', panel)
+			local fcmddataManager = vgui.Create('FastCmdDataManager', panel)
 			fcmddataManager:SetHeight(250)
 			fcmddataManager:UpdateFileList()
 			panel:AddItem(fcmddataManager)
+			cvars.AddChangeCallback('cl_fcmd_file', function(name, old, new) 
+				fcmddataManager:UpdateFileList()
+			end, 'bbb')
 			
 			panel:Button(phrase('fcmd.cmd.add_hook'), 'fcmd_add_hook')
 			panel:CheckBox(phrase('fcmd.var.notify'), 'cl_fcmd_notify')
@@ -60,21 +61,6 @@ hook.Add('PopulateToolMenu', 'fcmd_menu', function()
 	)
 end)
 
-cvars.AddChangeCallback('cl_fcmd_file', function(name, old, new) 
-	local newdata = fcmd_LoadFcmdDataFromFile(new)
-	if istable(newdata) then 
-		if isstring(newdata.loadsound) and newdata.loadsound ~= '' then
-			surface.PlaySound(soundpath)
-		else
-			surface.PlaySound('Weapon_AR2.Reload_Push')
-		end
-	end
-	fcmdm_SetCurrentFcmdData(newdata)
-	fcmdm_SetCurrentCallData(nil)
-	if IsValid(fcmddataManager) and fcmddataManager.UpdateFileList then
-		fcmddataManager:UpdateFileList()
-	end
-end, 'aaa')
 
 
 
