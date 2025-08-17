@@ -8,18 +8,29 @@ local ExecuteCmd = FcmdExecuteCmd
 local ExecuteCall = FcmdExecuteCall
 local DrawWheel = FcmdDrawWheel
 local CheckSelect = FcmdCheckSelect
+
+
+local cmdfilter = {
+	['+fcmdm_expand'] = true,
+	['-fcmdm_expand'] = true,
+	['+fcmdm_call'] = true,
+	['-fcmdm_call'] = true,
+	
+	['fcmdu_editor'] = true,
+	['fcmdm_break'] = true
+}
 -----------------------------
-local cl_fcmd_menu_size = CreateClientConVar('cl_fcmd_menu_size', '500', true, false)
-local cl_fcmd_expand_key = CreateClientConVar('cl_fcmd_expand_key', '0', true, false)
-local cl_fcmd_execute_key = CreateClientConVar('cl_fcmd_execute_key', '0', true, false)
-local cl_fcmd_break_key = CreateClientConVar('cl_fcmd_break_key', '0', true, false)
+local cl_fcmd_wheel_size = CreateClientConVar('cl_fcmd_wheel_size', '500', true, false)
+local cl_fcmdm_expand_key = CreateClientConVar('cl_fcmdm_expand_key', '0', true, false)
+local cl_fcmd_call_key = CreateClientConVar('cl_fcmd_call_key', '0', true, false)
+local cl_fcmdm_break_key = CreateClientConVar('cl_fcmdm_break_key', '0', true, false)
 local cl_fcmd_wfile = CreateClientConVar('cl_fcmd_wfile', 'fastcmd/wheel/chat.json', true, false)
 -----------------------------
 local curwdata
 local function ExecuteBreak()
 	-- 执行中断命令
 	if not istable(curwdata) then return end
-	ExecuteCmd(curwdata.breakcmd)
+	ExecuteCmd(curwdata.breakcmd, cmdfilter)
 end
 
 local expand = false
@@ -59,7 +70,7 @@ local function ExecuteCurCall(state)
 	-- 展开ui时不执行
 	if expand or not istable(curcall) then return end
 	// PrintTable(curcall)
-	ExecuteCall(curcall, state)
+	ExecuteCall(curcall, state, cmdfilter)
 end
 
 FcmdmExecuteCurCall = ExecuteCurCall
@@ -108,23 +119,18 @@ cvars.AddChangeCallback('cl_fcmd_wfile', function(name, old, new)
 	curcall = nil
 end, 'aaa')
 
-concommand.Add('+fcmd_expand', function(ply) ExpandWheel(true) end)
-concommand.Add('-fcmd_expand', function(ply) ExpandWheel(false) end)
-concommand.Add('+fcmd_call', function(ply) ExecuteCurCall(true) end)
-concommand.Add('-fcmd_call', function(ply) ExecuteCurCall(false) end)
+concommand.Add('+fcmdm_expand', function(ply) ExpandWheel(true) end)
+concommand.Add('-fcmdm_expand', function(ply) ExpandWheel(false) end)
+concommand.Add('+fcmdm_call', function(ply) ExecuteCurCall(true) end)
+concommand.Add('-fcmdm_call', function(ply) ExecuteCurCall(false) end)
 
-concommand.Add('fcmd_break', function(ply) ExecuteBreak() end)
-concommand.Add('fcmd_example', function(ply, cmd, args) 
-	local msg = args[1] or 'Hello Workshop'
-	ply:EmitSound('friends/message.wav')
-	ply:PrintMessage(HUD_PRINTTALK, msg) 
-end)
+concommand.Add('fcmdm_break', function(ply) ExecuteBreak() end)
 
 -----------------------------
 local expandKey = false
 local function ExpandKeyEvent()
 	-- 展开键事件 (有绑定时边沿触发)
-	local key = cl_fcmd_expand_key:GetInt()
+	local key = cl_fcmdm_expand_key:GetInt()
 	if key == 0 then return end
 	local current = input.IsKeyDown(key) or input.IsMouseDown(key)
 	if expandKey ~= current then 
@@ -133,22 +139,22 @@ local function ExpandKeyEvent()
 	expandKey = current
 end
 
-local executeKey = false
-local function ExecuteKeyEvent()
+local callKey = false
+local function CallKeyEvent()
 	-- 执行键事件 (有绑定时边沿触发)
-	local key = cl_fcmd_execute_key:GetInt()
+	local key = cl_fcmd_call_key:GetInt()
 	if key == 0 then return end
 	local current = input.IsKeyDown(key) or input.IsMouseDown(key)
-	if executeKey ~= current then 
+	if callKey ~= current then 
 		ExecuteCurCall(current) 
 	end
-	executeKey = current
+	callKey = current
 end
 
 local breakKey = false
 local function BreakKeyEvent()
 	-- 中断键事件 (有绑定时上升沿触发)
-	local key = cl_fcmd_break_key:GetInt()
+	local key = cl_fcmdm_break_key:GetInt()
 	if key == 0 then return end
 	local current = input.IsKeyDown(key) or input.IsMouseDown(key)
 	if current and breakKey ~= current then 
@@ -163,7 +169,7 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 
 		-- 按键事件
 		ExpandKeyEvent()
-		ExecuteKeyEvent()
+		CallKeyEvent()
 		BreakKeyEvent()
 
 		if not expand then return end 
@@ -171,7 +177,7 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 		-- 检查选中
 		local rootcache = curwdata.cache
 		local selectIdx = CheckSelect(
-			rootcache.centersize * cl_fcmd_menu_size:GetInt(), 
+			rootcache.centersize * cl_fcmd_wheel_size:GetInt(), 
 			curwdata
 		)
 
@@ -207,7 +213,7 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 		end
 		
 		-- 使用多个全局渲染设置, 异常时必须着重处理
-		local succ, err = pcall(DrawWheel, cl_fcmd_menu_size:GetInt(), curwdata, expandstate)
+		local succ, err = pcall(DrawWheel, cl_fcmd_wheel_size:GetInt(), curwdata, expandstate)
 		
 		if not succ then	
 			render.ClearStencil()
@@ -219,7 +225,7 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 			hook.Remove('HUDPaint', 'fcmd_draw')
 
 			ErrorNoHaltWithStack(err)
-			FcmdError('#fcmd.err.fatal', '#fcmd.err.hook_die')
+			FcmdError('#fcmdm.err.fatal', '#fcmdm.err.hook_die')
 			ExpandWheel(false)
 		end
 	end)
@@ -229,7 +235,7 @@ hook.Add('KeyPress', 'fcmd_init', function(ply, key)
 	if key == IN_FORWARD or key == IN_BACK then
 		LocalPlayer():ConCommand('fcmd_add_hook')
 		FcmdmReloadCurWData()
-		FcmdHelp('#fcmd.help.use')
+		FcmdHelp('#fcmdm.help.use')
 		hook.Remove('KeyPress', 'fcmd_init')
 	end
 end)

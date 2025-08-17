@@ -9,8 +9,6 @@ local surface = surface
 local RealFrameTime = RealFrameTime
 local Vector = Vector
 local zerovec, zeroang = Vector(), Angle()
-local icondefault = Material('fastcmd/hud/default.jpg')
-
 local circlemask = Material('fastcmd/hud/circlemask')
 
 local function Elasticity(x)

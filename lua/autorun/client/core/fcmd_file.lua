@@ -18,37 +18,40 @@ end
 ------------------------------
 function FcmdLoadMaterials(path, failed)
 	-- 加载游戏目录或缓存目录的材质, 加载缓存目录材质
+	if tonumber(path) ~= nil then
+		local wsid = path
+		local asyncmat = {
+			mat = icondefault, 
+			downloading = true
+		}
 
-	if isstring(path) and path ~= '' then
-		local folder = string.GetPathFromFilename(path)
-		local ext = string.GetExtensionFromFilename(path)
-		if ext == 'cache' and (folder == 'cache/workshop/' or folder == 'cache\\workshop\\') then
-			local mat = AddonMaterial(path)
-			if mat == nil then
-				-- 自动尝试下载
-				local asyncmat = {mat = icondefault, downloading = true}
-				local previewid = string.GetFileFromFilename(string.StripExtension(path))
-
+		local start = CurTime()
+		steamworks.FileInfo(wsid, function(result)
+			local err = result.error
+			if err then
+				FcmdWarn('#fcmd.warn.query', tostring(err), '#fcmd.help.query_addon_info', 'wsid:'..tostring(wsid))
+			else
+				local previewid = result.previewid
 				steamworks.Download(previewid, true, function(name)
 					asyncmat.downloading = false
 					if name == nil then
-						FcmdWarn('#fcmd.warn.download', previewid)
+						FcmdWarn('#fcmd.warn.download', '#fcmd.help.download_addon_pre', 'previewid:'..tostring(previewid))
 						asyncmat.mat = failed
 					else
-						FcmdHelp('#fcmd.help.download', previewid)
 						asyncmat.mat = AddonMaterial(name)
+						if asyncmat.mat == nil then 
+							FcmdWarn('#fcmd.warn.quote', name)
+							asyncmat.mat = failed 
+						end
+						print('加载时间:', CurTime() - start)
 					end
-				end)
-			
-				return asyncmat
-			else
-				return mat
+				end)	
 			end
-		elseif ext ~= 'cache' then
-			return Material(path)
-		else
-			return failed
-		end
+		end)
+	
+		return asyncmat
+	elseif isstring(path) and path ~= '' then
+		return Material(path)
 	else
 		return failed
 	end
@@ -272,22 +275,22 @@ function FcmdCreateWheelData(folder)
 	"metadata": [
 		{
 			"call": {
-				"pexecute": "fcmd_example \"Hello World\"",
-				"rexecute": "fcmd_example \"Good Bye\""
+				"pexecute": "fcmdm_example \"Hello World\"",
+				"rexecute": "fcmdm_example \"Good Bye\""
 			},
 			"icon": "fastcmd/hud/world.jpeg"
 		},
 		{
 			"call": {
-				"pexecute": "fcmd_example \"Hello Garry's Mod\"",
-				"rexecute": "fcmd_example \"Good Bye\""
+				"pexecute": "fcmdm_example \"Hello Garry's Mod\"",
+				"rexecute": "fcmdm_example \"Good Bye\""
 			},
 			"icon": "fastcmd/hud/gmod.jpeg"
 		},
 		{
 			"call": {
-				"pexecute": "fcmd_example \"Hello Workshop\"",
-				"rexecute": "fcmd_example \"Good Bye\""
+				"pexecute": "fcmdm_example \"Hello Workshop\"",
+				"rexecute": "fcmdm_example \"Good Bye\""
 			},
 			"icon": "fastcmd/hud/workshop.jpeg"
 		}
@@ -321,6 +324,12 @@ function FcmdCopyJsonFileContent(filepath)
 	return true
 end
 
+
+concommand.Add('fcmd_example', function(ply, cmd, args) 
+	local msg = args[1] or 'Hello'
+	ply:EmitSound('friends/message.wav')
+	ply:PrintMessage(HUD_PRINTTALK, msg) 
+end)
 
 if not file.Exists('fastcmd/wheel/chat.json', 'DATA') then
 	local filepath = FcmdCreateWheelData('fastcmd/wheel')

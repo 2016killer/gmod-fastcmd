@@ -9,7 +9,7 @@
 
 // 	-- 编辑器窗口定义
 // 	Editor = vgui.Create('DFrame')
-// 	Editor:SetTitle('#fcmd.ui.title.editor')
+// 	Editor:SetTitle('#fcmdu.title.editor')
 // 	Editor:SetSize(scrw * 0.6, scrh * 0.7)
 // 	Editor:Center()
 // 	Editor:SetSizable(true)
@@ -95,7 +95,7 @@
 // 			browserbtn:SetSize(0.2 * nw, nh)	 
 // 		end
 
-// 		browserbtn:SetText('#fcmd.ui.title.material_browser')
+// 		browserbtn:SetText('#fcmdu.title.material_browser')
 // 		browserbtn.DoClick = function(self)
 // 			local x, y = self:LocalToScreen(0, 0)
 // 			OpenMaterialsBrowser(x, y - 250, 300, 300)
@@ -108,7 +108,7 @@
 // 	end
 
 // 	-- 根属性编辑器部分
-// 	local ciconbtn = CreateMaterialInput('fcmd.ui.cicon', RootAttrs)
+// 	local ciconbtn = CreateMaterialInput('fcmdu.cicon', RootAttrs)
 
 // 	// local arrow = CreateMaterialInput(RootAttrs)
 // 	// local edge = CreateMaterialInput(RootAttrs)
