@@ -6,6 +6,8 @@ local cmdfilter = {
 	['-fcmd_expand'] = true,
 	['+fcmd_call'] = true,
 	['-fcmd_call'] = true,
+	
+	['fcmd_editor'] = true,
 	['fcmd_break'] = true
 }
 

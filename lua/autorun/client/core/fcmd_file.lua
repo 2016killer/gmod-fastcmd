@@ -16,24 +16,41 @@ local function isjsonpath(filename)
 	return len >= 5 and string.lower(string.sub(filename, len - 4, len)) == '.json'
 end
 ------------------------------
-function FcmdLoadMaterials(path, default)
+function FcmdLoadMaterials(path, failed)
 	-- 加载游戏目录或缓存目录的材质, 加载缓存目录材质
-	local prefix1 = string.sub(path, 1, 10)
-	local prefix2 = string.sub(path, 1, 6)
-	
-	if prefix1 == 'materials/' or prefix1 == 'materials\\' then
-		return Material(string.sub(path, 11))
-	elseif prefix2 == 'cache/' or prefix2 == 'cache\\' then
-		-- 失败后使用默认材质
-		local mat = AddonMaterial(string.sub(path, 7))
-		if mat == nil then
-			FcmdWarn('#fcmd.warn.load', '#fcmd.warn.cmat_not_exist')
-			return icondefault
+
+	if isstring(path) and path ~= '' then
+		local folder = string.GetPathFromFilename(path)
+		local ext = string.GetExtensionFromFilename(path)
+		if ext == 'cache' and (folder == 'cache/workshop/' or folder == 'cache\\workshop\\') then
+			local mat = AddonMaterial(path)
+			if mat == nil then
+				-- 自动尝试下载
+				local asyncmat = {mat = icondefault, downloading = true}
+				local previewid = string.GetFileFromFilename(string.StripExtension(path))
+
+				steamworks.Download(previewid, true, function(name)
+					asyncmat.downloading = false
+					if name == nil then
+						FcmdWarn('#fcmd.warn.download', previewid)
+						asyncmat.mat = failed
+					else
+						FcmdHelp('#fcmd.help.download', previewid)
+						asyncmat.mat = AddonMaterial(name)
+					end
+				end)
+			
+				return asyncmat
+			else
+				return mat
+			end
+		elseif ext ~= 'cache' then
+			return Material(path)
 		else
-			return mat
+			return failed
 		end
 	else
-		return Material(path)
+		return failed
 	end
 end
  
@@ -58,21 +75,9 @@ function FcmdParseJSON2WheelData(json)
 	wdata.cache = rootcache
 
 	-- 加载图标材质
-	if isstring(wdata.cicon) and wdata.cicon ~= '' then
-		rootcache.cicon = FcmdLoadMaterials(wdata.cicon)
-	else
-		rootcache.cicon = cicondefault
-	end
-	if isstring(wdata.arrow) and wdata.arrow ~= '' then
-		rootcache.arrow = FcmdLoadMaterials(wdata.arrow)
-	else
-		rootcache.arrow = arrowdefault
-	end
-	if isstring(wdata.edge) and wdata.edge ~= '' then
-		rootcache.edge = FcmdLoadMaterials(wdata.edge)
-	else
-		rootcache.edge = edgedefault
-	end
+	rootcache.cicon = FcmdLoadMaterials(wdata.cicon, cicondefault)
+	rootcache.arrow = FcmdLoadMaterials(wdata.arrow, arrowdefault)
+	rootcache.edge = FcmdLoadMaterials(wdata.edge, edgedefault)
 
 	---- 变量边界
 
@@ -115,12 +120,7 @@ function FcmdParseJSON2WheelData(json)
 			}
 		}
 
-		local icon = node.icon
-		if isstring(icon) and icon ~= '' then
-			nodecache.icon = FcmdLoadMaterials(icon)
-		else
-			nodecache.icon = icondefault
-		end
+		nodecache.icon = FcmdLoadMaterials(node.icon, icondefault)
 
 		node.cache = nodecache
 	end
@@ -214,22 +214,22 @@ function FcmdCopyJsonFile(origin, target)
 
 	if not isjsonpath(origin) then
 		FcmdError('#fcmd.err.copy', origin, '#fcmd.err.not_json_suffix')
-		return nil
+		return false
 	end
 
 	if not isjsonpath(target) then
 		FcmdError('#fcmd.err.copy', target, '#fcmd.err.not_json_suffix')
-		return nil
+		return false
 	end
 
 	if file.IsDir(origin, 'DATA') then
 		FcmdError('#fcmd.err.copy', origin, '#fcmd.err.is_folder')
-		return nil
+		return false
 	end
 
 	if not file.Exists(origin, 'DATA') then
 		FcmdError('#fcmd.err.copy', origin, '#fcmd.err.file_not_exist')
-		return nil
+		return false
 	end
 
 	local path = string.GetPathFromFilename(target)
@@ -298,6 +298,29 @@ function FcmdCreateWheelData(folder)
 
 	return filepath
 end
+
+function FcmdCopyJsonFileContent(filepath)
+	-- 拷贝文件内容
+	if not isjsonpath(filepath) then
+		FcmdError('#fcmd.err.copy', filepath, '#fcmd.err.not_json_suffix')
+		return false
+	end
+
+	if file.IsDir(filepath, 'DATA') then
+		FcmdError('#fcmd.err.copy', filepath, '#fcmd.err.is_folder')
+		return false
+	end
+
+	if not file.Exists(filepath, 'DATA') then
+		FcmdError('#fcmd.err.copy', filepath, '#fcmd.err.file_not_exist')
+		return false
+	end
+
+	SetClipboardText(file.Read(filepath, 'DATA'))
+	
+	return true
+end
+
 
 if not file.Exists('fastcmd/wheel/chat.json', 'DATA') then
 	local filepath = FcmdCreateWheelData('fastcmd/wheel')

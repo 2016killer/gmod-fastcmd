@@ -58,7 +58,7 @@ local function ExecuteCurCall(state)
 	-- 执行选中
 	-- 展开ui时不执行
 	if expand or not istable(curcall) then return end
-	PrintTable(curcall)
+	// PrintTable(curcall)
 	ExecuteCall(curcall, state)
 end
 
@@ -95,8 +95,9 @@ cvars.AddChangeCallback('cl_fcmd_wfile', function(name, old, new)
 	if new ~= '' then
 		newdata = FcmdLoadWheelData(new)
 		if istable(newdata) then 
-			if isstring(newdata.loadsound) and newdata.loadsound ~= '' then
-				surface.PlaySound(soundpath)
+			local loadsound = newdata.loadsound
+			if isstring(loadsound) and loadsound ~= '' then
+				surface.PlaySound(loadsound)
 			else
 				surface.PlaySound('Weapon_AR2.Reload_Push')
 			end

@@ -9,12 +9,23 @@ local surface = surface
 local RealFrameTime = RealFrameTime
 local Vector = Vector
 local zerovec, zeroang = Vector(), Angle()
+local icondefault = Material('fastcmd/hud/default.jpg')
 
 local circlemask = Material('fastcmd/hud/circlemask')
 
 local function Elasticity(x)
 	if x >= 1 then return 1 end
 	return x * 1.4301676 + sin(x * 4.0212386) * 0.55866
+end
+
+
+local function SetMaterial(mat)
+	if istable(mat) then
+		-- 处理异步材质
+		surface.SetMaterial(mat.mat)
+	else
+		surface.SetMaterial(mat)
+	end
 end
 
 local function DrawWheel2D(size, wdata, state, preview)
@@ -50,13 +61,13 @@ local function DrawWheel2D(size, wdata, state, preview)
 	
 	-- 中心图标绘制
 	surface.SetDrawColor(255, 255, 255, 255)
-	surface.SetMaterial(rootcache.cicon)
+	SetMaterial(rootcache.cicon)
 	surface.DrawTexturedRectRotated(cx, cy, centersize, centersize, 0)
 
 	-- 箭头图标绘制
 	if rootcache.selectIdx ~= nil then
 		local mouseang = (atan2(y - cy, x - cx) + halfpi) * radunit
-		surface.SetMaterial(rootcache.arrow)
+		SetMaterial(rootcache.arrow)
 		surface.DrawTexturedRectRotated(cx, cy, centersize, centersize, -mouseang)
 	end
 
@@ -104,7 +115,7 @@ local function DrawWheel2D(size, wdata, state, preview)
 		end
 		local lpos = size * cache.dir * (0.5 + cache.addlen * 0.1)
 
-		surface.SetMaterial(cache.icon)
+		SetMaterial(cache.icon)
 		surface.DrawTexturedRectRotated(cx + lpos.x, cy + lpos.y, iconsize, iconsize, 0)
 	end
 
@@ -112,7 +123,7 @@ local function DrawWheel2D(size, wdata, state, preview)
 	if wdata.autoclip then 
 		render.SetStencilEnable(false)
 		surface.SetDrawColor(255, 255, 255, 255)
-		surface.SetMaterial(rootcache.edge)
+		SetMaterial(rootcache.edge)
 
 		for i, data in ipairs(wdata.metadata) do	 
 			local cache = data.cache

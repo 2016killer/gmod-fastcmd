@@ -25,101 +25,114 @@ function CreateWheelDataBrowser(parent)
 	if not IsValid(parent) then return end
 	if IsValid(WheelDataBrowser) then WheelDataBrowser:Remove() end
 
-
-	local CreateNewBtn = vgui.Create('DButton', parent)
-	CreateNewBtn:SetWidth(parent:GetWide())
-	CreateNewBtn:SetText('#fcmd.ui.create')
-	CreateNewBtn:Dock(BOTTOM)
-	CreateNewBtn:DockMargin(0, 5, 0, 5)
-
-	local EditorBtn = vgui.Create('DButton', parent)
-	EditorBtn:SetWidth(parent:GetWide())
-	EditorBtn:SetText('#fcmd.ui.editor')
-	EditorBtn:Dock(BOTTOM)
-	EditorBtn:DockMargin(0, 5, 0, 5)
-
 	WheelDataBrowser = vgui.Create('DPanel', parent)
 	WheelDataBrowser:Dock(FILL)
 	WheelDataBrowser:DockMargin(5, 5, 5, 5)
 
-	local SearchPanel = vgui.Create('DPanel', WheelDataBrowser)
-	SearchPanel:SetHeight(20)
-	SearchPanel:Dock(TOP)
-	SearchPanel:DockMargin(5, 5, 5, 5)
+	WheelDataBrowser.Paint = function() end
 
-	local RefreshBtn = vgui.Create('DImageButton', SearchPanel)
-	RefreshBtn:SetWidth(20)
-	RefreshBtn:Dock(RIGHT)
+	local TopNavigation = vgui.Create('DPanel', WheelDataBrowser)
+	TopNavigation:SetHeight(20)
+	TopNavigation:Dock(TOP)
+	TopNavigation:DockMargin(0, 0, 0, 5)
+
+	local RefreshBtn = vgui.Create('DImageButton', TopNavigation)
+	RefreshBtn:SetWidth(16)
+	RefreshBtn:Dock(LEFT)
 	RefreshBtn:SetImage('icon16/arrow_refresh.png')
+	RefreshBtn:DockMargin(5, 0, 0, 0)
 
-	local SearchInput = vgui.Create('DTextEntry', SearchPanel)
-	SearchInput:Dock(FILL)
-	SearchInput:DockMargin(0, 0, 5, 0)
+	local CreateNewBtn = vgui.Create('DButton', WheelDataBrowser)
+	CreateNewBtn:SetWidth(WheelDataBrowser:GetWide())
+	CreateNewBtn:SetText('#fcmd.ui.create')
+	CreateNewBtn:Dock(BOTTOM)
+	CreateNewBtn:DockMargin(0, 5, 0, 5)
 
 	local FileBrowser = vgui.Create('DFileBrowser', WheelDataBrowser)
 	FileBrowser:Dock(FILL)
 	FileBrowser:SetPath('DATA') 
-	FileBrowser:SetBaseFolder('fastcmd') 
-	FileBrowser:SetOpen(true) 
+	FileBrowser:SetBaseFolder('fastcmd/wheel') 
+	FileBrowser:SetCurrentFolder('fastcmd/wheel') 
+	FileBrowser:SetOpen(true)
 
 	function FileBrowser:OnRightClick(filePath, selectedPanel) 
 		local menu = DermaMenu() 
 
-		local apply = menu:AddOption('#fcmd.ui.apply', function() end)
+		local apply = menu:AddOption('#fcmd.ui.apply', function()
+			FcmdmLoadCurWData(filePath)
+		end)
 		apply:SetImage('materials/icon16/application_lightning.png')
-		
+
 		menu:AddSpacer()
-		
-		local copy = menu:AddOption('#fcmd.ui.copy', function() end)
+
+		local copy = menu:AddOption('#fcmd.ui.copy', function()
+			local succ, err = pcall(FcmdCopyJsonFile, filePath, filePath)
+			if not succ then 
+				ErrorNoHaltWithStack(err)
+			end
+			FileBrowser:Refresh()
+		end)
 		copy:SetImage('materials/icon16/application_double.png')
 
-		local copyclip = menu:AddOption('#fcmd.ui.copy_to_clipboard', function() SetClipboardText(filePath) end)
-		copyclip:SetImage('materials/icon16/application_double.png')
+		local copycontent = menu:AddOption('#fcmd.ui.copy_content', function() 
+			FcmdCopyJsonFileContent(filePath)
+		end)
+		copycontent:SetImage('materials/icon16/application_double.png')
 		
 		menu:AddSpacer()
 		
 		local edit = menu:AddOption('#fcmd.ui.edit', function() end)
 		edit:SetImage('materials/icon16/application_edit.png')
 
-		local delete = menu:AddOption('#fcmd.ui.delete', function() end)
+		local delete = menu:AddOption('#fcmd.ui.delete', function()
+			local succ, err = pcall(FcmdDeleteJsonFile, filePath)
+			if succ then 
+				succ = err
+				if succ then surface.PlaySound('Buttons.snd15') end
+			else
+				ErrorNoHaltWithStack(err)
+			end
+			FileBrowser:Refresh()
+		end)
 		delete:SetImage('materials/icon16/application_delete.png')
 
 		menu:Open()
 	end
 
-	function FileBrowser:OnSelect(filePath)
-		WheelDataBrowser.OpenPath = string.GetPathFromFilename(filePath)
+	function FileBrowser:Refresh()
+		self:SetCurrentFolder(self:GetCurrentFolder()) 
 	end
 
-	// function PANEL:DoClick()
-	// 	self:SetOpenPath(string.GetPathFromFilename(file))
+	function FileBrowser:CreateNew()
+		surface.PlaySound('garrysmod/ui_click.wav')
+		FcmdCreateWheelData(self:GetCurrentFolder())
+		self:Refresh()
+	end
 
-	// 	local file = self:GetOpenFile()
-	// 	local page = self:GetPage()
+	RefreshBtn.DoClick = function()
+		FileBrowser:Refresh()
+	end
 
-	// 	self.bSetup = self:Setup()
-
-	// 	self:SetOpenFile(file)
-	// 	self:SetPage(page)
-	// end
-
+	CreateNewBtn.DoClick = function()
+		FileBrowser:CreateNew()
+	end
 
 	function FileBrowser:OnDoubleClick(filePath)
-		print(filePath)
+		FcmdmLoadCurWData(filePath)
 	end
 
+	function FileBrowser:OnSelect(filePath)
+		WheelDataBrowser.selectFile = filePath
+	end
 
-	// WheelDataBrowser:MakePopup()
-	// WheelDataBrowser:SetKeyBoardInputEnabled(true)
+	function WheelDataBrowser:Refresh()
+		FileBrowser:Refresh()
+		self.selectFile = nil
+	end
+
 	return WheelDataBrowser
 end
-local frame = vgui.Create('DFrame')
-frame:SetSize(500, 500)
-frame:Center()
-frame:MakePopup()
-frame:SetKeyBoardInputEnabled(true)
-frame:SetSizable(true)
-CreateWheelDataBrowser(frame)
+
 
 
 // --------------------------------
@@ -192,42 +205,6 @@ CreateWheelDataBrowser(frame)
 // 		return succ
 // 	end
 // 	return false
-// end
-
-// function FastCmdDataManager:UpdateFileList()
-// 	self:SelectFile()
-// 	timer.Simple(0.5, self.datalist.UpdateFileList)
-// 	FcmdProgress('#fcmd.ui.loading')
-// end
-
-// function FastCmdDataManager:OnSizeChanged(newWidth, newHeight)
-// 	self.title:SetPos(0.1 * newWidth, 0)
-// 	self.title:SetSize(0.8 * newWidth, 0.1 * newHeight)
-
-// 	self.editorbtn:SetPos(0, 0.1 * newHeight)
-// 	self.editorbtn:SetSize(newWidth, 0.08 * newHeight)
-
-// 	self.datalist:SetPos(0, 0.2 * newHeight)
-// 	self.datalist:SetSize(newWidth * 0.7, newHeight * 0.8)
-	
-// 	self.createbtn:SetPos(newWidth * 0.75, 0.2 * newHeight)
-// 	self.createbtn:SetSize(newWidth * 0.25, 0.1 * newHeight)
-
-// 	self.saveasbtn:SetPos(newWidth * 0.75, 0.32 * newHeight)
-// 	self.saveasbtn:SetSize(newWidth * 0.25, 0.1 * newHeight)
-
-// 	self.deletebtn:SetPos(newWidth * 0.75, 0.44 * newHeight)
-// 	self.deletebtn:SetSize(newWidth * 0.25, 0.1 * newHeight)
-
-// 	self.previewbtn:SetPos(newWidth * 0.75, 0.56 * newHeight)
-// 	self.previewbtn:SetSize(newWidth * 0.25, 0.1 * newHeight)
-
-// 	self.previewtrans = {
-// 		x = newWidth * 0.75,
-// 		y = newHeight * 0.7,
-// 		w = newWidth * 0.25,
-// 		h = newWidth * 0.25,
-// 	}
 // end
 
 // function FastCmdDataManager:Paint(w, h)
