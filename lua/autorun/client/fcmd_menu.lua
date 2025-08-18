@@ -64,9 +64,9 @@ hook.Add('PopulateToolMenu', 'fcmd_menu', function()
 			local EditorBtn = panel:Button(phrase('#fcmdu.editor'), '')
 			EditorBtn.DoClick = function()
 				if WheelDataBrowser.selectFile then
-					LocalPlayer():ConCommand('fcmdu_editor '..WheelDataBrowser.selectFile)
+					LocalPlayer():ConCommand('fcmdu_open_editor '..WheelDataBrowser.selectFile)
 				else
-					LocalPlayer():ConCommand('fcmdu_editor '..GetConVar('cl_fcmd_wfile'):GetString())
+					LocalPlayer():ConCommand('fcmdu_open_editor '..GetConVar('cl_fcmd_wfile'):GetString())
 				end
 			end
 

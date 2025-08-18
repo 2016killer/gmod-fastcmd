@@ -37,6 +37,9 @@ function FcmdOpenMaterialsBrowser()
 	SubmitBtn:SetText('#fcmdu.submit')
 	SubmitBtn:SetHeight(30)
 	SubmitBtn:Dock(BOTTOM)
+	SubmitBtn.DoClick = function()
+		MaterialsBrowser:Remove()
+	end
 
 	Div:Dock(FILL)
 	Div:SetLeft(Tabs)
@@ -189,27 +192,29 @@ end)
 
 function FcmdCreateMaterialInput(txt, parent)
 	local panel = vgui.Create('DPanel', parent)
+	panel:SetSize(180, 20)
+
 	local label = vgui.Create('DLabel', panel)
-	local input = vgui.Create('DTextEntry', panel)
-	local openbtn = vgui.Create('DButton', panel)
 	label:SetText(txt)
+	label:SetPos(0, 0)
+
+	local input = vgui.Create('DTextEntry', panel)
+	input:SetPos(50, 0)
+	input:SetSize(100, 20)
+
+	local openbtn = vgui.Create('DButton', panel)
 	openbtn:SetText('#fcmdu.browse')
-
-	label:SetColor(Color(0, 0, 0))
-
-	panel:Dock(FILL)
-	label:Dock(TOP)
-	openbtn:Dock(RIGHT)
-	input:Dock(FILL)
+	openbtn:SetPos(150, 0)
+	openbtn:SetSize(30, 20)
+	
 
 	openbtn.DoClick = function()	
 		FcmdOpenMaterialsBrowser()
 
 		local openfolder = string.GetPathFromFilename(input:GetText())
 		if string.Trim(openfolder) ~= '' then MaterialsBrowser:SetCurrentFolder(openfolder) end
-		function MaterialsBrowser:OnSelect(file, mat)
+		function MaterialsBrowser:OnSelect(file)
 			input:SetValue(file)
-			input.mat = mat
 		end
 	end
 
@@ -217,7 +222,23 @@ function FcmdCreateMaterialInput(txt, parent)
 		if IsValid(MaterialsBrowser) then MaterialsBrowser:Remove() end
 	end
 
-	return input
+	function input:OnValueChange(value)
+		if isfunction(panel.OnValueChange) then
+			panel:OnValueChange(value)
+		end
+	end
+
+	function panel:SetValue(value)
+		input:SetValue(value)
+	end	
+	
+	function panel:GetValue()
+		return input:GetValue()
+	end
+	
+	panel.Paint = function() end
+
+	return panel
 end
 
 // local frame = vgui.Create('DFrame')
@@ -226,3 +247,4 @@ end
 // frame:MakePopup()
 // frame:SetKeyBoardInputEnabled(true)
 // FcmdCreateMaterialInput('材质', frame)
+

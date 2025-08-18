@@ -17,7 +17,8 @@ local function isjsonpath(filename)
 end
 ------------------------------
 function FcmdLoadMaterials(path, failed)
-	-- 加载游戏目录或缓存目录的材质, 加载缓存目录材质
+	-- 加载游戏目录的材质或插件封面
+	-- 失败默认不应用于插件模式
 	if tonumber(path) ~= nil then
 		local wsid = path
 		local asyncmat = {
@@ -27,21 +28,24 @@ function FcmdLoadMaterials(path, failed)
 
 		local start = CurTime()
 		steamworks.FileInfo(wsid, function(result)
+			// PrintTable(result)
 			local err = result.error
 			if err then
 				FcmdWarn('#fcmd.warn.query', tostring(err), '#fcmd.help.query_addon_info', 'wsid:'..tostring(wsid))
+			elseif result.previewurl == '' then
+				FcmdWarn('#fcmd.err.addon_no_preview', 'wsid:'..tostring(wsid))
 			else
 				local previewid = result.previewid
 				steamworks.Download(previewid, true, function(name)
 					asyncmat.downloading = false
 					if name == nil then
 						FcmdWarn('#fcmd.warn.download', '#fcmd.help.download_addon_pre', 'previewid:'..tostring(previewid))
-						asyncmat.mat = failed
 					else
-						asyncmat.mat = AddonMaterial(name)
-						if asyncmat.mat == nil then 
+						local mat = AddonMaterial(name)		
+						if mat == nil then 
 							FcmdWarn('#fcmd.warn.quote', name)
-							asyncmat.mat = failed 
+						else
+							asyncmat.mat = mat
 						end
 						print('加载时间:', CurTime() - start)
 					end
@@ -53,10 +57,10 @@ function FcmdLoadMaterials(path, failed)
 	elseif isstring(path) and path ~= '' then
 		return Material(path)
 	else
-		return failed
+		return failed or icondefault
 	end
 end
- 
+
 function FcmdParseJSON2WheelData(json)
 	-- 解析json为wheeldata并伴随界面提示
 	local wdata = util.JSONToTable(json)

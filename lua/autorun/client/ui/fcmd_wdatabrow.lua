@@ -141,7 +141,9 @@ function FcmdCreateWheelDataBrowser(parent)
 		
 		menu:AddSpacer()
 		
-		local edit = menu:AddOption('#fcmdu.edit', function() end)
+		local edit = menu:AddOption('#fcmdu.edit', function()
+			LocalPlayer():ConCommand('fcmdu_open_editor '..filePath)
+		end)
 		edit:SetImage('materials/icon16/application_edit.png')
 
 		local delete = menu:AddOption('#fcmdu.delete', function()

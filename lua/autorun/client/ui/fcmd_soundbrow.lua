@@ -46,19 +46,21 @@ end)
 
 function FcmdCreateSoundInput(txt, parent)
 	local panel = vgui.Create('DPanel', parent)
+	panel:SetSize(180, 20)
+
 	local label = vgui.Create('DLabel', panel)
-	local input = vgui.Create('DTextEntry', panel)
-	local openbtn = vgui.Create('DButton', panel)
 	label:SetText(txt)
+	label:SetPos(0, 0)
+
+	local input = vgui.Create('DTextEntry', panel)
+	input:SetPos(50, 0)
+	input:SetSize(100, 20)
+
+	local openbtn = vgui.Create('DButton', panel)
 	openbtn:SetText('#fcmdu.browse')
-
-	label:SetColor(Color(0, 0, 0))
-
-	panel:Dock(FILL)
-	label:Dock(TOP)
-	openbtn:Dock(RIGHT)
-	input:Dock(FILL)
-
+	openbtn:SetPos(150, 0)
+	openbtn:SetSize(30, 20)
+	
 	openbtn.DoClick = function()	
 		FcmdOpenSoundsBrowser()
 
@@ -73,9 +75,24 @@ function FcmdCreateSoundInput(txt, parent)
 		if IsValid(SoundsBrowser) then SoundsBrowser:Remove() end
 	end
 
-	return input
-end
+	function input:OnValueChange(value)
+		if isfunction(panel.OnValueChange) then
+			panel:OnValueChange(value)
+		end
+	end
 
+	function panel:SetValue(value)
+		input:SetValue(value)
+	end	
+	
+	function panel:GetValue()
+		return input:GetValue()
+	end
+
+	panel.Paint = function() end
+
+	return panel
+end
 
 // local frame = vgui.Create('DFrame')
 // frame:SetSize(500, 100)

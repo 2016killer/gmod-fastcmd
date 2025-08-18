@@ -135,22 +135,23 @@ local function DrawWheel2D(size, wdata, state, preview)
 	end
 end
 
-function FcmdDrawBounds(size, wdata)
+function FcmdDrawBounds(size, wdata, preview)
 	-- 绘制边界
+
+	local sx, sy = 0, 0
 	local w, h = ScrW(), ScrH()
-	local cx, cy = w * 0.5, h * 0.5
+	if istable(preview) then
+		-- 没什么卵用, 只是为了方便不用渲染参数绘制预览
+		sx, sy = preview.x, preview.y
+		w, h = preview.w, preview.h	
+	end
+	local cx, cy = sx + w * 0.5, sy + h * 0.5
 
 	local rootcache = wdata.cache
 	local centersize = rootcache.centersize * size
-	local iconsize = rootcache.iconsize * size
 
-	surface.DrawCircle(cx, cy, size * 0.5, 255, 255, 255, 255)
-	surface.DrawCircle(cx, cy, centersize * 0.5, 255, 255, 255, 255)
-	for i, data in ipairs(wdata.metadata) do	 
-		local cache = data.cache
-		local lpos = size * cache.dir * 0.5
-		surface.DrawCircle(cx + lpos.x, cy + lpos.y, iconsize * 0.5, 255, 255, 255, 255)
-	end
+	surface.DrawCircle(cx, cy, size * 0.5, 255, 255, 0)
+	surface.DrawCircle(cx, cy, centersize * 0.5, 0, 255, 0)
 end
 
 function FcmdCheckSelect(size, wdata)

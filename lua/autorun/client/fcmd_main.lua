@@ -6,6 +6,7 @@ include('core/fcmd_execute.lua')
 include('core/fcmd_file.lua')
 include('core/fcmd_filter.lua')
 
+local ExecuteCmd = FcmdExecuteCmd
 local ExecuteBreak = FcmdExecuteBreak
 local ExecuteCall = FcmdExecuteCall
 local DrawWheel = FcmdDrawWheel
@@ -66,6 +67,7 @@ local function ExpandWheel(state)
 		if selectIdx ~= nil and selectIdx ~= 0 then
 			curwdata.cache.selectedIdx = selectIdx
 			SetCurCall(curwdata.metadata[selectIdx].call)
+			if istable(curcall) then ExecuteCmd(curcall.sexecute) end
 		end
 		curwdata.cache.selectIdx = nil
 	end
