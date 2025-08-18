@@ -8,7 +8,7 @@ if CLIENT then
 
 		local emitter = ParticleEmitter(LocalPlayer():GetPos())
 		for i = 1, num do
-			local part = emitter:Add('trails/electric', startp + step * i)
+			local part = emitter:Add(mat, startp + step * i)
 			if part then
 				part:SetDieTime(math.max(i * 0.005, 0.1)) 
 

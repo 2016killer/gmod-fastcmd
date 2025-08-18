@@ -3,7 +3,28 @@ include('../core/fcmd_file.lua')
 local rootpath = 'fastcmd/wheel'
 local min, max = math.min, math.max
 
+local function EnumPathNoExist(filePath)
+	local path = string.GetPathFromFilename(filePath)
+	local ext = string.GetExtensionFromFilename(filePath)
+	local name = string.StripExtension(string.GetFileFromFilename(filePath))
+	ext = ext and ('.'..ext) or ''
 
+	local succ = false
+	for i = 0, 2 do
+		local newtarget = i == 0 and filePath or (path..name..' ('..i..')'..ext)
+		if not file.Exists(newtarget, 'DATA') then
+			filePath = newtarget
+			succ = true
+			break
+		end
+	end
+
+	if succ then
+		return filePath
+	else
+		return nil
+	end
+end
 --------------------------------
 local WheelDataBrowser
 function FcmdCreateWheelDataBrowser(parent)
@@ -48,6 +69,59 @@ function FcmdCreateWheelDataBrowser(parent)
 			FcmdmLoadCurWData(filePath)
 		end)
 		apply:SetImage('materials/icon16/application_lightning.png')
+
+		local rename = menu:AddOption('#fcmdu.rename', function()
+			local frame = vgui.Create('DFrame')
+			frame:SetSize(250, 100)
+			frame:Center()
+			frame:SetTitle('#fcmdu.rename')
+			frame:MakePopup()
+
+			local nameinput = vgui.Create('DTextEntry', frame)
+			nameinput:SetPos(10, 30)
+			nameinput:SetSize(230, 20)
+			nameinput:SetText(
+				string.StripExtension(string.GetFileFromFilename(filePath))
+			)
+
+			local okbtn = vgui.Create('DButton', frame)
+			okbtn:SetPos(10, 60)
+			okbtn:SetSize(110, 20)
+			okbtn:SetText('#fcmdu.submit')
+			okbtn.DoClick = function()
+				local name = nameinput:GetValue()
+				name = string.Trim(string.GetFileFromFilename(name))
+				if name == '' then return end
+				if string.GetExtensionFromFilename(name) ~= 'json' then
+					name = name .. '.json'
+				end
+
+				local newpath = string.GetPathFromFilename(filePath)..name
+				if newpath == filePath then
+					frame:Remove()
+					return
+				end
+
+				newpath = EnumPathNoExist(newpath)
+				if newpath == nil then
+					FcmdError('#fcmdu.err.rename', '#fcmdu.exist')
+				else
+					file.Rename(filePath, newpath)
+					frame:Remove()
+					FileBrowser:Refresh()
+				end
+			end
+
+			local cancelbtn = vgui.Create('DButton', frame)
+			cancelbtn:SetPos(130, 60)
+			cancelbtn:SetSize(110, 20)
+			cancelbtn:SetText('#fcmdu.cancel')
+			cancelbtn.DoClick = function()
+				frame:Remove()
+			end
+
+		end)
+		rename:SetImage('materials/icon16/basket_edit.png')
 
 		menu:AddSpacer()
 

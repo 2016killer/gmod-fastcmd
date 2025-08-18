@@ -156,7 +156,6 @@ function FcmdOpenMaterialsBrowser()
 		local matfile = string.sub(filePath, 11, -1)
 		MaterialsBrowser.selectmaterial = Material(matfile)
 		MaterialsBrowser.selectFile = matfile
-
 		if isfunction(MaterialsBrowser.OnSelect) then
 			MaterialsBrowser:OnSelect(MaterialsBrowser.selectFile, MaterialsBrowser.selectmaterial)
 		end
@@ -169,13 +168,13 @@ function FcmdOpenMaterialsBrowser()
 		end)
 		copy:SetImage('materials/icon16/application_double.png')
 		
-		local apply = menu:AddOption('#fcmdu.apply', function() 
-		
-		end)
-		apply:SetImage('materials/icon16/application_lightning.png')
-
 		menu:Open()
 	end
+
+	function MaterialsBrowser:SetCurrentFolder(folder) 
+		FileBrowser:SetCurrentFolder(folder)
+	end
+
 
 	Tabs:AddSheet('#fcmdu.title.addon', AddonBrowser, 'icon16/bricks.png', false, false, '')
 	Tabs:AddSheet('#fcmdu.title.game', GameMatBrowser, 'materials/icon16/add.png', false, false, '')
@@ -188,28 +187,42 @@ concommand.Add('fcmdu_open_matbrow', function()
 	FcmdOpenMaterialsBrowser()
 end)
 
-function FcmdCreateMaterialsInput(label, parent)
+function FcmdCreateMaterialInput(txt, parent)
 	local panel = vgui.Create('DPanel', parent)
 	local label = vgui.Create('DLabel', panel)
 	local input = vgui.Create('DTextEntry', panel)
 	local openbtn = vgui.Create('DButton', panel)
+	label:SetText(txt)
 	openbtn:SetText('#fcmdu.browse')
-	openbtn.DoClick = function()
+
+	label:SetColor(Color(0, 0, 0))
+
+	panel:Dock(FILL)
+	label:Dock(TOP)
+	openbtn:Dock(RIGHT)
+	input:Dock(FILL)
+
+	openbtn.DoClick = function()	
 		FcmdOpenMaterialsBrowser()
+
+		local openfolder = string.GetPathFromFilename(input:GetText())
+		if string.Trim(openfolder) ~= '' then MaterialsBrowser:SetCurrentFolder(openfolder) end
 		function MaterialsBrowser:OnSelect(file, mat)
 			input:SetValue(file)
 			input.mat = mat
 		end
 	end
 
-	panel:Dock(FILL)
-
-	label:Dock(TOP)
-	openbtn:Dock(RIGHT)
-	input:Dock(FILL)
+	function panel:OnRemove()
+		if IsValid(MaterialsBrowser) then MaterialsBrowser:Remove() end
+	end
 
 	return input
 end
 
-
-print(language.GetPhrase(''))
+// local frame = vgui.Create('DFrame')
+// frame:SetSize(500, 100)
+// frame:Center()
+// frame:MakePopup()
+// frame:SetKeyBoardInputEnabled(true)
+// FcmdCreateMaterialInput('材质', frame)

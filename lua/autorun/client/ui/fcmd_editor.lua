@@ -1,137 +1,112 @@
-// Editor = nil
-// local function OpenEditor(filename)
-// 	if IsValid(Editor) then Editor:Remove() end
+min, max = math.min, math.max
 
-// 	local fcmddata, filename = fcmd_LoadFcmdDataFromFile(filename)
-// 	if not istable(fcmddata) then return end
+include('../core/fcmd_wheel.lua') 
+local DrawWheel2D = FcmdDrawWheel2D
 
-// 	local scrw, scrh = ScrW(), ScrH()
+local function SafeDrawDrawWheel2D(size, wdata, preview)
+    local succ, err = pcall(DrawWheel2D, size, wdata, 1, preview)
+	if not succ then
+		render.ClearStencil()
+		render.SetStencilEnable(false)
+		render.OverrideColorWriteEnable(false)
 
-// 	-- 编辑器窗口定义
-// 	Editor = vgui.Create('DFrame')
-// 	Editor:SetTitle('#fcmdu.title.editor')
-// 	Editor:SetSize(scrw * 0.6, scrh * 0.7)
-// 	Editor:Center()
-// 	Editor:SetSizable(true)
-// 	Editor:MakePopup()
-// 	Editor:SetDeleteOnClose(true)
+        
+		ErrorNoHaltWithStack(err)
+        FcmdError('#fcmdu.err.fatal', '#fcmdu.err.data')
+	end
+	return succ
+end
+-------------------------
+local WheelDataEditor = nil 
+local function FcmdOpenWheelDataEditor(filename)
+	if IsValid(WheelDataEditor) then WheelDataEditor:Remove() end
 
-// 	function Editor:OnRemove()
-// 		fcmd_SaveFcmdDataToFile(fcmddata, filename, true)
-// 		fcmdm_ReloadCurrentFcmdData(filename)
-// 		if IsValid(SoundBrowser) then SoundBrowser:Remove() end
-// 		if IsValid(MaterialsBrowser) then MaterialsBrowser:Remove() end
-// 	end
+	local wdata = FcmdLoadWheelData(filename)
+	if not istable(wdata) then return end
 
-// 	-- 预览与编辑器主体定义
-// 	local ViewPort = vgui.Create('DPanel', Editor)
-// 	local Main = vgui.Create('DPanel', Editor)
-// 	local div = vgui.Create('DHorizontalDivider', Editor)
+	local scrw, scrh = ScrW(), ScrH()
+
+	-- 编辑器窗口定义
+	WheelDataEditor = vgui.Create('DFrame')
+	WheelDataEditor:SetTitle('#fcmdu.title.editor')
+	WheelDataEditor:SetSize(scrw * 0.6, scrh * 0.7)
+	WheelDataEditor:Center()
+	WheelDataEditor:SetSizable(true)
+	WheelDataEditor:MakePopup()
+	WheelDataEditor:SetDeleteOnClose(true)
+
+	function WheelDataEditor:OnRemove()
+        if istable(wdata) then
+            FcmdSaveWheelData(wdata, filename, true)
+            if GetConVar('cl_fcmd_wfile'):GetString() == filename then
+                FcmdmReloadCurWData()
+            end
+        end
+	end
+
+	-- 预览与编辑器主体定义
+	local ViewPort = vgui.Create('DPanel', WheelDataEditor)
+	local Main = vgui.Create('DPanel', WheelDataEditor)
+	local div = vgui.Create('DHorizontalDivider', WheelDataEditor)
 	
-// 	div:Dock(FILL)
-// 	div:SetLeft(ViewPort)
-// 	div:SetRight(Main)
-// 	div:SetDividerWidth(4)
-// 	div:SetLeftMin(20) 
-// 	div:SetRightMin(20)
-// 	div:SetLeftWidth(250)
+	div:Dock(FILL)
+	div:SetLeft(ViewPort)
+	div:SetRight(Main)
+	div:SetDividerWidth(4)
+	div:SetLeftMin(20) 
+	div:SetRightMin(20)
+	div:SetLeftWidth(250)
 	
-// 	ViewPort.fcmddata = fcmddata
-// 	Main.fcmddata = fcmddata
+    local background = Color(255, 255, 255, 200)
+	function ViewPort:Paint(w, h)
+		draw.RoundedBox(5, 0, 0, w, h, background)
+		if istable(wdata) then
+			local succ = SafeDrawDrawWheel2D(
+				self.size, 
+				wdata, 
+				self.previewtrans
+			)
+			if not succ then 
+                wdata = nil 
+            end
+		end
+	end
 
-// 	function ViewPort:Paint(w, h)
-// 		draw.RoundedBox(5, 0, 0, w, h, background)
-// 		if istable(self.fcmddata) then
-// 			local succ = SafeDrawHud2D(
-// 				self.size, 
-// 				self.fcmddata, 
-// 				1, 
-// 				self.previewtrans
-// 			)
-// 			if not succ then self.fcmddata = nil end
-// 		end
-// 	end
+	function ViewPort:OnSizeChanged(newWidth, newHeight)
+		self.previewtrans = {
+            x = 0,
+            y = 0,
+			w = newWidth,
+			h = newHeight,
+		}
+		self.size = min(newWidth, newHeight) * 0.5
+	end
 
-// 	function ViewPort:OnSizeChanged(newWidth, newHeight)
-// 		self.previewtrans = {
-// 			x = 0,
-// 			y = 0,
-// 			w = newWidth,
-// 			h = newHeight,
-// 		}
-// 		self.size = min(newWidth, newHeight) * 0.5
-// 	end
+	-- 根属性编辑器与节点属性编辑器定义
+	local RootAttrs = vgui.Create('DPanel', Main)
+	local MetadataAttrs = vgui.Create('DPanel', Main)
 
-// 	Main.Paint = emptyfunc
-
-// 	-- 根属性编辑器与节点属性编辑器定义
-// 	local RootAttrs = vgui.Create('DPanel', Main)
-// 	local MetadataAttrs = vgui.Create('DPanel', Main)
-
-// 	local div2 = vgui.Create('DVerticalDivider', Main)
+	local div2 = vgui.Create('DVerticalDivider', Main)
 	
-// 	div2:Dock(FILL)
-// 	div2:SetTop(RootAttrs)
-// 	div2:SetBottom(MetadataAttrs)
-// 	div2:SetDividerHeight(4)
-// 	div2:SetTopMin(20) 
-// 	div2:SetBottomMin(20)
-// 	div2:SetTopHeight(150)
+	div2:Dock(FILL)
+	div2:SetTop(RootAttrs)
+	div2:SetBottom(MetadataAttrs)
+	div2:SetDividerHeight(4)
+	div2:SetTopMin(20) 
+	div2:SetBottomMin(20)
+	div2:SetTopHeight(150)
 
-// 	local function CreateMaterialInput(label, parent)
-// 		local matinput = vgui.Create('DPanel', parent)
-// 		local label = vgui.Create('DLabel', matinput)
-// 		local txtinput = vgui.Create('DTextEntry', matinput)
-// 		local browserbtn = vgui.Create('DButton', matinput)
-
-// 		function matinput:OnSizeChanged(nw, nh)
-// 			label:SetPos(0, 0)
-// 			label:SetSize(0.2 * nw, nh)
-
-// 			txtinput:SetPos(0.2 * nw, 0)
-// 			txtinput:SetSize(0.6 * nw, nh)
-
-// 			browserbtn:SetPos(0.8 * nw, 0)
-// 			browserbtn:SetSize(0.2 * nw, nh)	 
-// 		end
-
-// 		browserbtn:SetText('#fcmdu.title.material_browser')
-// 		browserbtn.DoClick = function(self)
-// 			local x, y = self:LocalToScreen(0, 0)
-// 			OpenMaterialsBrowser(x, y - 250, 300, 300)
-// 		end
-
-// 		matinput.label = label
-// 		matinput.txtinput = txtinput
-
-// 		return matinput
-// 	end
-
-// 	-- 根属性编辑器部分
-// 	local ciconbtn = CreateMaterialInput('fcmdu.cicon', RootAttrs)
-
-// 	// local arrow = CreateMaterialInput(RootAttrs)
-// 	// local edge = CreateMaterialInput(RootAttrs)
-// 	// local transform3dbtn = vgui.Create('DButton', RootAttrs)
-// 	// local autoclip = vgui.Create('DButton', RootAttrs)
-// 	// local centersize = vgui.Create('DSlider', RootAttrs)
-// 	// local iconsize = vgui.Create('DSlider', RootAttrs)
-// 	// local fade = vgui.Create('DSlider', RootAttrs)
-
-// 	function RootAttrs:OnSizeChanged(nw, nh)
-// 		ciconbtn:SetPos(0, 0)
-// 		ciconbtn:SetSize(300, 20)
-
-// 		// arrow:SetPos(20, 0)
-// 		// arrow:SetSize(20, 20)
-
-// 		// edge:SetPos(40, 0)
-// 		// edge:SetSize(20, 20)
-
-// 		// transform3dbtn:SetPos(40, 0)
-// 		// transform3dbtn:SetSize(20, 20)
-// 	end
-// end
-// // OpenEditor('aaa')
-
+	-- 根属性编辑器部分
+	local ciconinput = FcmdCreateMaterialInput('#fcmdu.cicon', RootAttrs)
+    ciconinput:SetHeight(30)
+    ciconinput:Dock(TOP)
+	// local arrow = CreateMaterialInput(RootAttrs)
+	// local edge = CreateMaterialInput(RootAttrs)
+	// local transform3dbtn = vgui.Create('DButton', RootAttrs)
+	// local autoclip = vgui.Create('DButton', RootAttrs)
+	// local centersize = vgui.Create('DSlider', RootAttrs)
+	// local iconsize = vgui.Create('DSlider', RootAttrs)
+	// local fade = vgui.Create('DSlider', RootAttrs)
+end
+FcmdOpenWheelDataEditor('fastcmd/wheel/chat.json')
 
