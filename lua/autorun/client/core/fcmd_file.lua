@@ -275,24 +275,24 @@ function FcmdCreateWheelData(folder)
 	"metadata": [
 		{
 			"call": {
-				"pexecute": "fcmdm_example \"Hello World\"",
-				"rexecute": "fcmdm_example \"Good Bye\""
+				"pexecute": "fcmd_example1",
+				"rexecute": ""
 			},
-			"icon": "fastcmd/hud/world.jpeg"
+			"icon": "trails/electric"
 		},
 		{
 			"call": {
-				"pexecute": "fcmdm_example \"Hello Garry's Mod\"",
-				"rexecute": "fcmdm_example \"Good Bye\""
+				"pexecute": "+fcmd_example2",
+				"rexecute": "-fcmd_example2"
 			},
-			"icon": "fastcmd/hud/gmod.jpeg"
+			"icon": "trails/plasma"
 		},
 		{
 			"call": {
-				"pexecute": "fcmdm_example \"Hello Workshop\"",
-				"rexecute": "fcmdm_example \"Good Bye\""
+				"pexecute": "fcmd_example3",
+				"rexecute": ""
 			},
-			"icon": "fastcmd/hud/workshop.jpeg"
+			"icon": "models/wireframe"
 		}
 	]
 }	
@@ -324,12 +324,6 @@ function FcmdCopyJsonFileContent(filepath)
 	return true
 end
 
-
-concommand.Add('fcmd_example', function(ply, cmd, args) 
-	local msg = args[1] or 'Hello'
-	ply:EmitSound('friends/message.wav')
-	ply:PrintMessage(HUD_PRINTTALK, msg) 
-end)
 
 if not file.Exists('fastcmd/wheel/chat.json', 'DATA') then
 	local filepath = FcmdCreateWheelData('fastcmd/wheel')

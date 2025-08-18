@@ -184,7 +184,7 @@ function FcmdOpenMaterialsBrowser()
 	AddonBrowser:SetPage(page)
 end
 
-concommand.Add('fcmd_open_matbrow', function()
+concommand.Add('fcmdu_open_matbrow', function()
 	FcmdOpenMaterialsBrowser()
 end)
 

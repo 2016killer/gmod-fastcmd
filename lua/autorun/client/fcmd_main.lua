@@ -4,21 +4,14 @@ local pcall = pcall
 include('core/fcmd_wheel.lua')
 include('core/fcmd_execute.lua')
 include('core/fcmd_file.lua')
-local ExecuteCmd = FcmdExecuteCmd
+include('core/fcmd_filter.lua')
+
+local ExecuteBreak = FcmdExecuteBreak
 local ExecuteCall = FcmdExecuteCall
 local DrawWheel = FcmdDrawWheel
 local CheckSelect = FcmdCheckSelect
 
-
-local cmdfilter = {
-	['+fcmdm_expand'] = true,
-	['-fcmdm_expand'] = true,
-	['+fcmdm_call'] = true,
-	['-fcmdm_call'] = true,
-	
-	['fcmdu_editor'] = true,
-	['fcmdm_break'] = true
-}
+local cmdfilter = FcmdGetCmdFilter()
 -----------------------------
 local cl_fcmd_wheel_size = CreateClientConVar('cl_fcmd_wheel_size', '500', true, false)
 local cl_fcmdm_expand_key = CreateClientConVar('cl_fcmdm_expand_key', '0', true, false)
@@ -26,15 +19,29 @@ local cl_fcmd_call_key = CreateClientConVar('cl_fcmd_call_key', '0', true, false
 local cl_fcmdm_break_key = CreateClientConVar('cl_fcmdm_break_key', '0', true, false)
 local cl_fcmd_wfile = CreateClientConVar('cl_fcmd_wfile', 'fastcmd/wheel/chat.json', true, false)
 -----------------------------
+local curcall
 local curwdata
-local function ExecuteBreak()
+local expand = false
+
+local function ExecuteCurBreak()
 	-- 执行中断命令
-	if not istable(curwdata) then return end
-	ExecuteCmd(curwdata.breakcmd, cmdfilter)
+	if not istable(curcall) then return end
+	ExecuteBreak(curcall, cmdfilter)
 end
 
-local expand = false
-local curcall
+local function GetCurCall() return curcall end
+local function SetCurCall(target) 
+	if istable(target) then target.press = nil end -- 重置按下状态, 防止切换后第一次是弹起
+	if curcall ~= target then ExecuteCurBreak() end
+	curcall = target 
+end
+
+local function GetCurWData() return curwdata end
+local function SetCurWData(target) 
+	curwdata = target 
+	SetCurCall(nil)
+end
+
 local function ExpandWheel(state)
 	-- 展开UI
 	if not istable(curwdata) then
@@ -42,7 +49,6 @@ local function ExpandWheel(state)
 		return 
 	end
 
-	ExecuteBreak()
 	gui.EnableScreenClicker(state)
 	expand = state
 	
@@ -59,11 +65,14 @@ local function ExpandWheel(state)
 		local selectIdx = curwdata.cache.selectIdx
 		if selectIdx ~= nil and selectIdx ~= 0 then
 			curwdata.cache.selectedIdx = selectIdx
-			curcall = curwdata.metadata[selectIdx].call
+			SetCurCall(curwdata.metadata[selectIdx].call)
 		end
 		curwdata.cache.selectIdx = nil
 	end
 end
+
+local function GetExpand() return expand end
+local function SetExpand(target) ExpandWheel(target) end
 
 local function ExecuteCurCall(state)
 	-- 执行选中
@@ -74,17 +83,14 @@ local function ExecuteCurCall(state)
 end
 
 FcmdmExecuteCurCall = ExecuteCurCall
+FcmdmExecuteCurBreak = ExecuteCurBreak
 FcmdmExpandWheel = ExpandWheel
-FcmdmExecuteBreak = ExecuteBreak
-
-function FcmdmGetCurWData() return curwdata end
-function FcmdmSetCurWData(target) curwdata = target end
-
-function FcmdmGetCurCall() return curcall end
-function FcmdmSetCurCall(target) curcall = target end
-
-function FcmdmGetExpand() return expand end
-function FcmdmSetExpand(target) ExpandWheel(target) end
+FcmdmGetCurWData = GetCurWData
+FcmdmSetCurWData = SetCurWData
+FcmdmGetCurCall = GetCurCall
+FcmdmSetCurCall = SetCurCall
+FcmdmGetExpand = GetExpand
+FcmdmSetExpand = SetExpand
 
 function FcmdmLoadCurWData(filename)
 	LocalPlayer():ConCommand('cl_fcmd_wfile ""')
@@ -101,6 +107,15 @@ function FcmdmClearCurWData()
 	LocalPlayer():ConCommand('cl_fcmd_wfile ""')
 end
 
+
+table.Merge(cmdfilter, {
+	['+fcmdm_expand'] = true,
+	['-fcmdm_expand'] = true,
+	['+fcmdm_call'] = true,
+	['-fcmdm_call'] = true,
+	['fcmdm_break'] = true
+})
+
 cvars.AddChangeCallback('cl_fcmd_wfile', function(name, old, new) 
 	local newdata
 	if new ~= '' then
@@ -115,8 +130,7 @@ cvars.AddChangeCallback('cl_fcmd_wfile', function(name, old, new)
 		end
 	end
 
-	curwdata = newdata
-	curcall = nil
+	SetCurWData(newdata)
 end, 'aaa')
 
 concommand.Add('+fcmdm_expand', function(ply) ExpandWheel(true) end)
@@ -124,8 +138,7 @@ concommand.Add('-fcmdm_expand', function(ply) ExpandWheel(false) end)
 concommand.Add('+fcmdm_call', function(ply) ExecuteCurCall(true) end)
 concommand.Add('-fcmdm_call', function(ply) ExecuteCurCall(false) end)
 
-concommand.Add('fcmdm_break', function(ply) ExecuteBreak() end)
-
+concommand.Add('fcmdm_break', function(ply) ExecuteCurBreak() end)
 -----------------------------
 local expandKey = false
 local function ExpandKeyEvent()
@@ -158,7 +171,7 @@ local function BreakKeyEvent()
 	if key == 0 then return end
 	local current = input.IsKeyDown(key) or input.IsMouseDown(key)
 	if current and breakKey ~= current then 
-		ExecuteBreak() 
+		ExecuteCurBreak() 
 	end
 	breakKey = current
 end

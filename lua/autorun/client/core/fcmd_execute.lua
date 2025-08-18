@@ -39,14 +39,30 @@ function FcmdExecuteCall(call, press, filter)
 	// PrintTable(call)
 	if press then
 		ExecuteCmd(call.pexecute, filter)
-	else
+		call.press = true -- 记录按下状态, 同时也可用于判断是否执行过按下
+	elseif call.press ~= nil then
 		if isstring(call.rexecute) then
 			ExecuteCmd(call.rexecute, filter)
 		elseif isstring(call.pexecute) then
 			ExecuteCmd(AutoParseRexecute(call.pexecute), filter)
 		end
+		call.press = false
 	end
 end
+
+function FcmdExecuteBreak(call, filter)
+	-- 执行中断指令
+	if not call.press then return end
+	call.press = false
+	if isstring(call.bexecute) then
+		ExecuteCmd(call.bexecute, filter)
+	elseif isstring(call.rexecute) then
+		ExecuteCmd(call.rexecute, filter)
+	elseif isstring(call.pexecute) then
+		ExecuteCmd(AutoParseRexecute(call.pexecute), filter)
+	end
+end
+
 
 FcmdExecuteCmd = ExecuteCmd
 FcmdAutoParseRexecute = AutoParseRexecute
