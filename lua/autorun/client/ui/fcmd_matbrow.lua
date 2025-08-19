@@ -14,7 +14,7 @@ local icondefault = Material('fastcmd/hud/default.jpg')
 local MaterialsBrowser
 local page = 1
 local filterinput = ''
-function FcmdOpenMaterialsBrowser()
+function FcmduOpenMaterialsBrowser()
 	if IsValid(MaterialsBrowser) then MaterialsBrowser:Remove() end
 	local scrw, scrh = ScrW(), ScrH()
 	
@@ -184,67 +184,11 @@ function FcmdOpenMaterialsBrowser()
 	
 	AddonBrowser:Search(filterinput)
 	AddonBrowser:SetPage(page)
+
+	return MaterialsBrowser
 end
 
 concommand.Add('fcmdu_open_matbrow', function()
-	FcmdOpenMaterialsBrowser()
+	FcmduOpenMaterialsBrowser()
 end)
-
-function FcmdCreateMaterialInput(txt, parent)
-	local panel = vgui.Create('DPanel', parent)
-	panel:SetSize(180, 20)
-
-	local label = vgui.Create('DLabel', panel)
-	label:SetText(txt)
-	label:SetPos(0, 0)
-
-	local input = vgui.Create('DTextEntry', panel)
-	input:SetPos(50, 0)
-	input:SetSize(100, 20)
-
-	local openbtn = vgui.Create('DButton', panel)
-	openbtn:SetText('#fcmdu.browse')
-	openbtn:SetPos(150, 0)
-	openbtn:SetSize(30, 20)
-	
-
-	openbtn.DoClick = function()	
-		FcmdOpenMaterialsBrowser()
-
-		local openfolder = string.GetPathFromFilename(input:GetText())
-		if string.Trim(openfolder) ~= '' then MaterialsBrowser:SetCurrentFolder(openfolder) end
-		function MaterialsBrowser:OnSelect(file)
-			input:SetValue(file)
-		end
-	end
-
-	function panel:OnRemove()
-		if IsValid(MaterialsBrowser) then MaterialsBrowser:Remove() end
-	end
-
-	function input:OnValueChange(value)
-		if isfunction(panel.OnValueChange) then
-			panel:OnValueChange(value)
-		end
-	end
-
-	function panel:SetValue(value)
-		input:SetValue(value)
-	end	
-	
-	function panel:GetValue()
-		return input:GetValue()
-	end
-	
-	panel.Paint = function() end
-
-	return panel
-end
-
-// local frame = vgui.Create('DFrame')
-// frame:SetSize(500, 100)
-// frame:Center()
-// frame:MakePopup()
-// frame:SetKeyBoardInputEnabled(true)
-// FcmdCreateMaterialInput('材质', frame)
 

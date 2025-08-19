@@ -27,7 +27,7 @@ local function EnumPathNoExist(filePath)
 end
 --------------------------------
 local WheelDataBrowser
-function FcmdCreateWheelDataBrowser(parent)
+function FcmduCreateWheelDataBrowser(parent)
 	-- 数据列表
 	if not IsValid(parent) then return end
 	if IsValid(WheelDataBrowser) then WheelDataBrowser:Remove() end
@@ -195,5 +195,12 @@ function FcmdCreateWheelDataBrowser(parent)
 	return WheelDataBrowser
 end
 
-// concommand.Add('fcmd_open_wheel_wdatabrow', )
+concommand.Add('fcmdu_open_wheel_wdatabrow', function()
+	local frame = vgui.Create('DFrame')
+	frame:MakePopup()
+	frame:SetSize(500, 500)
+	frame:Center()
+	FcmduCreateWheelDataBrowser(frame)
+end)
+
 

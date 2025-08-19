@@ -51,7 +51,7 @@ hook.Add('PopulateToolMenu', 'fcmd_menu', function()
 
 			-- 轮盘数据浏览器
 			local body = vgui.Create('DPanel', panel)
-			local WheelDataBrowser = FcmdCreateWheelDataBrowser(body)
+			local WheelDataBrowser = FcmduCreateWheelDataBrowser(body)
 			body:SetHeight(250)
 			panel:AddItem(body)
 			
