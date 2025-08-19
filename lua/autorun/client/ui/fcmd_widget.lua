@@ -174,6 +174,11 @@ function FcmduCreateAdvancedInput(txt, txtbtn, parent, layout)
 		Button:SetText(txt)
 	end
 
+	function Body:SetUpdateOnType(updateOnType)
+		TextEntry:SetUpdateOnType(updateOnType)
+	end
+
+	TextEntry:SetUpdateOnType(true)
 	Body.Paint = function() end
 
 	return Body
@@ -235,15 +240,15 @@ function FcmduPushPullInput(txt, txtshow, txthide, parent)
 	function Body:SetExpand(state)
 		self.expand = state
 		if state then
-			self:SetButtonText(self.txtshow)
-			self.layout[2] = 0
-			self.layout[3] = 1 - self.layout[1] - self.layout[2]
-			self.childs[2]:SetVisible(false)
-		else
 			self:SetButtonText(self.txthide)
 			self.layout[2] = 0.5
 			self.layout[3] = 1 - self.layout[1] - self.layout[2]
 			self.childs[2]:SetVisible(true)
+		else
+			self:SetButtonText(self.txtshow)
+			self.layout[2] = 0
+			self.layout[3] = 1 - self.layout[1] - self.layout[2]
+			self.childs[2]:SetVisible(false)
 		end
 
 		self:RefreshLayout()
@@ -286,7 +291,8 @@ function FcmduCreateMaterialInput(txt, parent)
 		MaterialsBrowser = FcmduOpenMaterialsBrowser()
 		local openfolder = string.GetPathFromFilename(Body:GetValue())
 		if string.Trim(openfolder) ~= '' then MaterialsBrowser:SetCurrentFolder(openfolder) end
-		function MaterialsBrowser:OnSelect(file)
+		function MaterialsBrowser:OnSelect(file, mat)
+			Body.mat = mat
 			Body:SetValue(file)
 		end
 	end

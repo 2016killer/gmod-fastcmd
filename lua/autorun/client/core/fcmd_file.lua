@@ -279,22 +279,19 @@ function FcmdCreateWheelData(folder)
 	"metadata": [
 		{
 			"call": {
-				"pexecute": "fcmd_example1",
-				"rexecute": ""
+				"pexecute": "fcmd_example1"
 			},
 			"icon": "trails/electric"
 		},
 		{
 			"call": {
-				"pexecute": "+fcmd_example2",
-				"rexecute": "-fcmd_example2"
+				"pexecute": "+fcmd_example2"
 			},
 			"icon": "trails/plasma"
 		},
 		{
 			"call": {
-				"pexecute": "fcmd_example3",
-				"rexecute": ""
+				"pexecute": "fcmd_example3"
 			},
 			"icon": "models/wireframe"
 		}

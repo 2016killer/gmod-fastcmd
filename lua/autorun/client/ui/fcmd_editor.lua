@@ -1,14 +1,25 @@
 min, max = math.min, math.max
+surface = surface
 include('../core/fcmd_wheel.lua') 
 local DrawWheel2D = FcmdDrawWheel2D
 local DrawBounds = FcmdDrawBounds
 -------------------------
 local background = Color(255, 255, 255, 200)
 local background2 = Color(100, 100, 100, 200)
+local textcolor = Color(0, 0, 0, 255)
 local cicondefault = Material('fastcmd/hud/cicon.png')
 local arrowdefault = Material('fastcmd/hud/arrow.png')
 local icondefault = Material('fastcmd/hud/default.jpg')
 local edgedefault = Material('fastcmd/hud/edge.png')
+
+local function SetMaterial(mat)
+	if istable(mat) then
+		-- 处理异步材质
+		surface.SetMaterial(mat.mat)
+	else
+		surface.SetMaterial(mat)
+	end
+end
 
 local function SafeDrawWheel2D(size, wdata, preview)
     local succ1, err1 = pcall(DrawWheel2D, size, wdata, 1, preview)
@@ -51,52 +62,139 @@ local function UpdateNumCache(wdata)
 	rootcache.rotate3d = numdefault(wdata.rotate3d, 10) * math.pi / 180
 end
 
-local function CreateNodeEditor(node, parent)
-    // if not istable(node) then return end
- 
-    // local Body = FcmduCreateCustomGrid(parent)
-    // Body:SetLayout(2, 2, 20, 10, 20)
-    // Body:SetSize(200, 200)
+local function CreateNodeEditor(node, idx)
+    if not istable(node) then return end
+    node.cache = istable(node.cache) and node.cache or {}
 
-    // local iconinput = FcmduCreateMaterialInput('#fcmdu.icon', Body)
-    // local pexecuteinput = CreateTextEntry('#fcmdu.pexecute', Body)
-    // local AdvancedCategory = vgui.Create('DCollapsibleCategory', Body)
-    // AdvancedCategory:SetLabel('#fcmdu.advanced')
-    // AdvancedCategory:SetExpanded(false)
-
-    // Body:AddItem(iconinput)
-    // Body:AddItem(pexecuteinput)
-    // Body:AddItem(AdvancedCategory)
+    local Body = vgui.Create('DPanel')
+    local preview = vgui.Create('DPanel', Body)
+    local iconinput = FcmduCreateMaterialInput('', Body)
+    local CmdCategory = vgui.Create('DCollapsibleCategory', Body)
     
-     
+    Body:SetTall(64)
 
-    // local AdvancedContent = FcmduCreateCustomGrid(AdvancedCategory)
-    // AdvancedContent:Dock(FILL)
-    // AdvancedContent:SetLayout(9999, 1, 20, 10, 20)
+    preview:SetSize(64, 64)
+    preview:SetPos(0, 0)
 
-	// local rexecute = FcmduCreateMaterialInput('#fcmdu.cicon', AdvancedContent)
-    // AdvancedContent:AddItem(ciconinput)
+    iconinput.layout = {0, 0.7, 0.3}
+    iconinput:SetSize(200, 20)
+    iconinput:SetPos(64, 22)
 
+    CmdCategory:SetLabel('#fcmdu.cmd')
+    CmdCategory:SetExpanded(false)
+    CmdCategory:SetSize(200, 20)
+    CmdCategory:SetPos(284, 22)
 
-    // VisualCategory:SetContents(VisualContent)
+    function preview:Paint(nw, nh)
+        if node.cache.icon then   
+            surface.SetDrawColor(255, 255, 255, 255)
+            SetMaterial(node.cache.icon)
+            surface.DrawTexturedRect(0, 0, nw, nh)      
+        end
+    end
 
-    // iconinput:SetValue(node.icon)
-    // function iconinput:OnValueChange(value)
-    //     // wdata.cache = wdata.cache or {}
-    //     node.icon = value
-    //     node.cache.icon = FcmdLoadMaterials(value, icondefault)
-    // end
+    function Body:OnSizeChanged(nw, nh)
+        CmdCategory:SetWide(math.max(nw - 304, 64))
+    end
 
-    // function Body:Paint(w, h)
-    //     surface.SetDrawColor(255, 255, 255, 0)
-    //     surface.DrawLine(0, 0, w, h)
-    // end
+    function CmdCategory:OnToggle(expand)
+        if expand then
+            Body:SetTall(150)
+        else
+            Body:SetTall(64)
+        end
+    end
+
+    // ----
+    local CmdContent = FcmduCreateCustomGrid(
+        CmdCategory,
+        {
+            row = 10,
+            col = 1,
+            paddingw = 10,
+            h = 20
+        }
+    )
+    CmdContent:Dock(FILL)
+    local pexecuteinput = FcmduCreateTextEntry('#fcmdu.pexecute', CmdContent)
+	local rexecuteinput = FcmduPushPullInput('#fcmdu.rexecute', '#fcmdu.manual', '#fcmdu.auto', CmdContent)
+    local bexecuteinput = FcmduPushPullInput('#fcmdu.bexecute', '#fcmdu.manual', '#fcmdu.auto', CmdContent)
+    local sexecuteinput = FcmduCreateTextEntry('#fcmdu.sexecute', CmdContent)
+    
+    CmdContent:AddItem(pexecuteinput)
+    CmdContent:AddItem(rexecuteinput)
+    CmdContent:AddItem(bexecuteinput)
+    CmdContent:AddItem(sexecuteinput)
+
+    CmdCategory:SetContents(CmdContent)
+
+    function Body:Paint(w, h)
+        surface.SetDrawColor(255, 255, 255, 255)
+        surface.DrawLine(0, h - 1, w, h - 1)
+    end
+
+    iconinput:SetUpdateOnType(false)
+    iconinput:SetValue(node.icon)
+    iconinput.mat = node.cache.icon
+    function iconinput:OnValueChange(value)
+        node.icon = value
+        node.cache.icon = FcmdLoadMaterials(value, icondefault)
+    end
+
+    node.call = istable(node.call) and node.call or {}
+
+    pexecuteinput:SetValue(strdefault(node.call.pexecute, ''))
+    function pexecuteinput:OnValueChange(value)
+        node.call.pexecute = value
+    end
+
+    -- 隐藏自动解析的指令
+    if isstring(node.call.rexecute) then
+        rexecuteinput:SetExpand(true)
+        rexecuteinput:SetValue(strdefault(node.call.rexecute, ''))
+    else
+        rexecuteinput:SetExpand(false)
+    end
+    function rexecuteinput:Trigger(state)
+        if state then
+            rexecuteinput:SetValue(FcmdAutoParseRexecute(node.call.pexecute))
+        else
+            node.call.rexecute = nil
+        end
+    end
+    function rexecuteinput:OnValueChange(value)
+        node.call.rexecute = value
+    end
+
+    -- 隐藏自动解析的指令
+    if isstring(node.call.bexecute) then
+        bexecuteinput:SetExpand(true)
+        bexecuteinput:SetValue(strdefault(node.call.bexecute, ''))
+    else
+        bexecuteinput:SetExpand(false)
+    end
+    function bexecuteinput:Trigger(state)
+        if state then
+            bexecuteinput:SetValue(FcmdAutoParseRexecute(node.call.pexecute))
+        else
+            node.call.bexecute = nil
+        end
+    end
+    bexecuteinput:SetValue(strdefault(node.call.bexecute, ''))
+    function bexecuteinput:OnValueChange(value)
+        node.call.bexecute = value
+    end
+
+    sexecuteinput:SetValue(strdefault(node.call.sexecute, ''))
+    function sexecuteinput:OnValueChange(value)
+        node.call.sexecute = value
+    end
+
+    function Body:DoRightClick()
+        print(6666)
+    end
 
     return Body
-end
-
-local function UpdateNodeCache(wdata)
-
 end
 -------------------------
 local Opened = {}
@@ -178,9 +276,16 @@ function FcmdOpenWheelDataEditor(filename)
     VisualCategory:SetExpanded(true)
     VisualCategory:Dock(TOP)
 
-    local VisualContent = FcmduCreateCustomGrid(VisualCategory)
+    local VisualContent = FcmduCreateCustomGrid(
+        VisualCategory, 
+        {
+            row = 3,
+            col = 3,
+            paddingw = 10,
+            h = 20
+        }
+    )
     VisualContent:Dock(FILL)
-    VisualContent:SetLayout(3, 3, 20, 10, 20)
 
 	local ciconinput = FcmduCreateMaterialInput('#fcmdu.cicon', VisualContent)
 	local arrow = FcmduCreateMaterialInput('#fcmdu.arrow', VisualContent)
@@ -204,12 +309,19 @@ function FcmdOpenWheelDataEditor(filename)
     ----
     local SoundCategory = vgui.Create('DCollapsibleCategory', Main)	
     SoundCategory:SetLabel('#fcmdu.sound')
-    SoundCategory:SetExpanded(true)
+    SoundCategory:SetExpanded(false)
     SoundCategory:Dock(TOP)
 
-    local SoundContent = FcmduCreateCustomGrid(SoundCategory)
+    local SoundContent = FcmduCreateCustomGrid(
+        SoundCategory, 
+        {
+            row = 3,
+            col = 3,
+            paddingw = 10,
+            h = 20
+        }
+    )
     SoundContent:Dock(FILL)
-    SoundContent:SetLayout(3, 3, 20, 10, 20)
 
 	local loadsound = FcmduCreateSoundInput('#fcmdu.loadsound', SoundContent)
     local soundexpand = FcmduCreateSoundInput('#fcmdu.soundexpand', SoundContent)
@@ -234,9 +346,11 @@ function FcmdOpenWheelDataEditor(filename)
     MetadataContent:Dock(FILL)
     MetadataContent:MakeDroppable('fcmdu_wdata_metadata', true)
 
+    // MetadataContent:SetPaintBackground(true)
+    // MetadataContent:SetBackgroundColor(Color(0, 100, 100))
 
     for _, node in ipairs(wdata.metadata) do 
-        // MetadataContent:Add(CreateNodeEditor(node))
+        MetadataContent:Add(CreateNodeEditor(node))
     end
 
     function MetadataContent:OnModified()
@@ -297,7 +411,7 @@ function FcmdOpenWheelDataEditor(filename)
     ----
     return WheelDataEditor
 end
-FcmdOpenWheelDataEditor('fastcmd/wheel/chat.json')
+// FcmdOpenWheelDataEditor('fastcmd/wheel/chat.json')
 
 concommand.Add('fcmdu_open_editor', function(ply, cmd, args)
     local filename = args[1] or 'fastcmd/wheel/chat.json'

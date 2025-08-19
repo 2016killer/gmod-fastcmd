@@ -87,6 +87,8 @@ function FcmduOpenMaterialsBrowser()
 	
 	function AddonTree:OnNodeSelected()
 		local wsid = self:GetSelectedItem().wsid
+		if MaterialsBrowser.selectFile == wsid then return end
+
 		MaterialsBrowser.selectmaterial = FcmdLoadMaterials(wsid, icondefault)
 		MaterialsBrowser.selectFile = wsid
 
@@ -157,13 +159,15 @@ function FcmduOpenMaterialsBrowser()
 
 	function FileBrowser:OnSelect(filePath, _) 
 		local matfile = string.sub(filePath, 11, -1)
+		if MaterialsBrowser.selectFile == matfile then return end
+
 		MaterialsBrowser.selectmaterial = Material(matfile)
 		MaterialsBrowser.selectFile = matfile
 		if isfunction(MaterialsBrowser.OnSelect) then
 			MaterialsBrowser:OnSelect(MaterialsBrowser.selectFile, MaterialsBrowser.selectmaterial)
 		end
 	end
-
+	
 	function FileBrowser:OnRightClick(filePath, _) 
 		local menu = DermaMenu() 
 		local copy = menu:AddOption('#fcmdu.copy', function() 
