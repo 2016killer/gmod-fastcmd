@@ -255,6 +255,7 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 		CallKeyEvent()
 		BreakKeyEvent()
 
+		if not istable(curwdata) then return end -- 防止动态切换
 		if not expand then return end 
 
 		-- 检查选中
@@ -286,6 +287,7 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 
 	local expandstate = 0
 	hook.Add('HUDPaint', 'fcmd_draw', function() 
+		if not istable(curwdata) then return end
 		if expand then
 			expandstate = Clamp(expandstate + 5 * RealFrameTime(), 0, 1)
 		else
