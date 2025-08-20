@@ -279,7 +279,9 @@ function FcmduCreateSoundInput(txt, parent)
 	function Body:DoClick()	
 		SoundsBrowser = FcmduOpenSoundsBrowser()
 		local openfolder = string.GetPathFromFilename(Body:GetValue())
-		if string.Trim(openfolder) ~= '' then SoundsBrowser:SetCurrentFolder(openfolder) end
+		if openfolder and string.Trim(openfolder) ~= '' then 
+			SoundsBrowser:SetCurrentFolder(openfolder) 
+		end
 		function SoundsBrowser:OnSelect(file)
 			Body:SetValue(file)
 		end
@@ -298,7 +300,7 @@ function FcmduCreateMaterialInput(txt, parent)
 	function Body:DoClick()	
 		MaterialsBrowser = FcmduOpenMaterialsBrowser()
 		local openfolder = string.GetPathFromFilename(Body:GetValue())
-		if string.Trim(openfolder) ~= '' then MaterialsBrowser:SetCurrentFolder(openfolder) end
+		if openfolder and string.Trim(openfolder) ~= '' then MaterialsBrowser:SetCurrentFolder(openfolder) end
 		function MaterialsBrowser:OnSelect(file, mat)
 			Body.mat = mat
 			Body:SetValue(file)

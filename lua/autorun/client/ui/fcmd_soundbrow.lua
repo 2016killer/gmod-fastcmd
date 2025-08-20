@@ -38,6 +38,10 @@ function FcmduOpenSoundsBrowser()
 			SoundsBrowser.soundobj = nil	
 		end
 	end
+
+	function SoundsBrowser:SetCurrentFolder(folder) 
+		browser:SetCurrentFolder(folder)
+	end
 	
 	return SoundsBrowser
 end

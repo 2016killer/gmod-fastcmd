@@ -386,6 +386,32 @@ function FcmdOpenWheelDataEditor(filename)
     SoundContent:AddItem(soundgiveup)
     SoundContent:AddItem(soundselect)
 
+    loadsound:SetValue(strdefault(wdata.loadsound, ''))
+    function loadsound:OnValueChange(val)
+        wdata.loadsound = val
+    end
+
+    soundexpand:SetValue(strdefault(wdata.soundexpand, ''))
+    function soundexpand:OnValueChange(val)
+        wdata.soundexpand = val
+    end
+
+    soundclose:SetValue(strdefault(wdata.soundclose, ''))
+    function soundclose:OnValueChange(val)
+        wdata.soundclose = val
+    end
+
+    soundgiveup:SetValue(strdefault(wdata.soundgiveup, ''))
+    function soundgiveup:OnValueChange(val)
+        wdata.soundgiveup = val
+    end
+
+    soundselect:SetValue(strdefault(wdata.soundselect, ''))
+    function soundselect:OnValueChange(val)
+        wdata.soundselect = val
+    end
+
+
     SoundCategory:SetContents(SoundContent)	
     ----
     local MetadataCategory = vgui.Create('DCollapsibleCategory', Main)	
