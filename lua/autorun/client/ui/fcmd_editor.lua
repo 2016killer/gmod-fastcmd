@@ -73,6 +73,7 @@ local function UpdateNodeNumCache(wdata)
 		local ang = -0.5 * math.pi + (i - 1) * step
         local nodecache = istable(node.cache) and node.cache or {}
 		nodecache.dir = Vector(math.cos(ang), math.sin(ang), 0)
+        nodecache.addlen = 0
         node.cache = nodecache
 	end
 end
@@ -174,7 +175,7 @@ local function CreateNodeEditor(node)
         rexecuteinput:SetExpand(false)
     end
     function rexecuteinput:Trigger(state)
-        if state then
+        if state and isstring(node.call.pexecute) then
             rexecuteinput:SetValue(FcmdAutoParseRexecute(node.call.pexecute))
         else
             node.call.rexecute = nil
@@ -192,7 +193,7 @@ local function CreateNodeEditor(node)
         bexecuteinput:SetExpand(false)
     end
     function bexecuteinput:Trigger(state)
-        if state then
+        if state and isstring(node.call.pexecute) then
             bexecuteinput:SetValue(FcmdAutoParseRexecute(node.call.pexecute))
         else
             node.call.bexecute = nil
