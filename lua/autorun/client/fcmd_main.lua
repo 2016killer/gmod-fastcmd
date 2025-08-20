@@ -96,19 +96,18 @@ FcmdmSetExpand = SetExpand
 
 function FcmdmLoadCurWData(filename)
 	LocalPlayer():ConCommand('cl_fcmd_wfile ""')
-	LocalPlayer():ConCommand('cl_fcmd_wfile '..filename)
+	LocalPlayer():ConCommand(string.format('cl_fcmd_wfile "%s"', filename))
 end
 
 function FcmdmReloadCurWData()
 	local filename = cl_fcmd_wfile:GetString()
 	LocalPlayer():ConCommand('cl_fcmd_wfile ""')
-	LocalPlayer():ConCommand('cl_fcmd_wfile '..filename)
+	LocalPlayer():ConCommand(string.format('cl_fcmd_wfile "%s"', filename))
 end
 
 function FcmdmClearCurWData()
 	LocalPlayer():ConCommand('cl_fcmd_wfile ""')
 end
-
 
 table.Merge(cmdfilter, {
 	['+fcmdm_expand'] = true,

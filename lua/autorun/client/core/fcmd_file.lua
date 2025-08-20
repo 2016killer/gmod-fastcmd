@@ -94,6 +94,7 @@ function FcmdParseJSON2WheelData(json)
 		math.pi * 0.667
 	)
 	
+	rootcache.angbound = angbound
 	rootcache.fade = math.max(numdefault(wdata.fade, 100), 0)
 	rootcache.centersize = math.max(numdefault(wdata.centersize, 0.5), 0)
 	rootcache.iconsize = math.sin(angbound * 0.25) * 2
@@ -113,6 +114,8 @@ function FcmdParseJSON2WheelData(json)
 			FcmdWarn('#fcmd.warn.parse', '#fcmd.warn.invalid_idx', '"'..tostring(i)..'"')
 			i = 0
 		end
+
+		if not istable(node.call) then node.call = {} end
 
 		local ang = -0.5 * math.pi + (i - 1) * step
 		local angleft = ang - 0.5 * angbound

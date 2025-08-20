@@ -1,4 +1,10 @@
 include('ui/fcmd_wdatabrow.lua')
+include('ui/fcmd_matbrow.lua')
+include('ui/fcmd_soundbrow.lua')
+include('ui/fcmd_editor.lua')
+include('ui/fcmd_widget.lua')
+
+concommand.Add('fcmd_version', function() print('test') end)
 
 local convars = {
 	cl_fcmd_wheel_size = 500,
@@ -64,9 +70,9 @@ hook.Add('PopulateToolMenu', 'fcmd_menu', function()
 			local EditorBtn = panel:Button(phrase('#fcmdu.editor'), '')
 			EditorBtn.DoClick = function()
 				if WheelDataBrowser.selectFile then
-					LocalPlayer():ConCommand('fcmdu_open_editor '..WheelDataBrowser.selectFile)
+					LocalPlayer():ConCommand(string.format('fcmdu_open_editor "%s"', WheelDataBrowser.selectFile))
 				else
-					LocalPlayer():ConCommand('fcmdu_open_editor '..GetConVar('cl_fcmd_wfile'):GetString())
+					LocalPlayer():ConCommand(string.format('fcmdu_open_editor "%s"', GetConVar('cl_fcmd_wfile'):GetString()))
 				end
 			end
 
@@ -75,7 +81,6 @@ hook.Add('PopulateToolMenu', 'fcmd_menu', function()
 		end
 	)
 end)
-
 
 
 

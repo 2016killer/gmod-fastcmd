@@ -48,23 +48,42 @@ local function numdefault(num, default)
 end
 
 local function UpdateNumCache(wdata)
-    local rootcache = wdata.cache or {}
+    -- 用于更新高耦合的参数
+    wdata.metadata = metadata
     wdata.cache = rootcache
 
 	local angbound = math.min(
-		math.pi * 2 / math.max(#wdata.metadata, 1) * math.max(numdefault(wdata.iconsize, 0.5), 0), 
+		math.pi * 2 / math.max(#metadata, 1) * math.max(numdefault(wdata.iconsize, 0.5), 0), 
 		math.pi * 0.667
 	)
 
+    rootcache.angbound = angbound
 	rootcache.fade = math.max(numdefault(wdata.fade, 100), 0)
 	rootcache.centersize = math.max(numdefault(wdata.centersize, 0.5), 0)
 	rootcache.iconsize = math.sin(angbound * 0.25) * 2
 	rootcache.rotate3d = numdefault(wdata.rotate3d, 10) * math.pi / 180
 end
 
-local function CreateNodeEditor(node, idx)
+local function UpdateNodeNumCache(wdata)
+    -- 用于更新高耦合的参数
+    -- 主要更新图标位置
+    local metadata = wdata.metadata
+	local step = math.pi * 2 / #metadata
+	for i, node in ipairs(metadata) do 
+		local ang = -0.5 * math.pi + (i - 1) * step
+        local nodecache = istable(node.cache) and node.cache or {}
+		nodecache.dir = Vector(math.cos(ang), math.sin(ang), 0)
+        node.cache = nodecache
+	end
+end
+
+local clipboard
+
+local function CreateNodeEditor(node)
+    -- 希望DListLayout能正确管理子控件
     if not istable(node) then return end
-    node.cache = istable(node.cache) and node.cache or {}
+    node.call = istable(node.call) and node.call or {}
+    node.cache = istable(node.cache) and node.cache or {icon = FcmdLoadMaterials(node.icon, icondefault)}
 
     local Body = vgui.Create('DPanel')
     local preview = vgui.Create('DPanel', Body)
@@ -72,6 +91,7 @@ local function CreateNodeEditor(node, idx)
     local CmdCategory = vgui.Create('DCollapsibleCategory', Body)
     
     Body:SetTall(64)
+    Body.node = node
 
     preview:SetSize(64, 64)
     preview:SetPos(0, 0)
@@ -134,14 +154,12 @@ local function CreateNodeEditor(node, idx)
     end
 
     iconinput:SetUpdateOnType(false)
-    iconinput:SetValue(node.icon)
-    iconinput.mat = node.cache.icon
+    iconinput:SetValue(strdefault(node.icon, ''))
     function iconinput:OnValueChange(value)
         node.icon = value
         node.cache.icon = FcmdLoadMaterials(value, icondefault)
     end
 
-    node.call = istable(node.call) and node.call or {}
 
     pexecuteinput:SetValue(strdefault(node.call.pexecute, ''))
     function pexecuteinput:OnValueChange(value)
@@ -190,8 +208,42 @@ local function CreateNodeEditor(node, idx)
         node.call.sexecute = value
     end
 
-    function Body:DoRightClick()
-        print(6666)
+
+    local DragCall = Body.OnMousePressed
+    function Body:OnMousePressed(keyCode)
+        DragCall(Body, keyCode)
+        if keyCode == MOUSE_RIGHT then
+            local menu = DermaMenu() 
+
+            local copy = menu:AddOption('#fcmdu.copy', function()
+                local copynode = table.Copy(node)
+                copynode.cache = nil 
+                clipboard = util.TableToJSON(copynode)
+
+                if not isstring(clipboard) then return end
+                local parent = self:GetParent()
+                if IsValid(parent) then
+                    local newnode = util.JSONToTable(clipboard)
+                    if istable(newnode) then parent:Add(CreateNodeEditor(newnode)) end
+                    parent:Save()
+                end
+            end)
+            copy:SetImage('materials/icon16/application_double.png')
+
+            local delete = menu:AddOption('#fcmdu.delete', function()
+                self.node = nil
+                self:Remove()
+
+                local parent = self:GetParent()
+                if IsValid(parent) then
+                    parent:Save()
+                end
+            end)
+            delete:SetImage('materials/icon16/application_delete.png')
+
+            menu:Open()
+        end
+
     end
 
     return Body
@@ -346,67 +398,100 @@ function FcmdOpenWheelDataEditor(filename)
     MetadataContent:Dock(FILL)
     MetadataContent:MakeDroppable('fcmdu_wdata_metadata', true)
 
-    // MetadataContent:SetPaintBackground(true)
-    // MetadataContent:SetBackgroundColor(Color(0, 100, 100))
 
-    for _, node in ipairs(wdata.metadata) do 
-        MetadataContent:Add(CreateNodeEditor(node))
+    for _, node in ipairs(wdata.metadata) do
+        local graph = CreateNodeEditor(node)
+        if graph then
+            MetadataContent:Add(graph)
+        end
+    end
+
+    function MetadataContent:Save()
+        local children = MetadataContent:GetChildren()
+        wdata.metadata = {}
+        for _, child in ipairs(children) do
+            if istable(child.node) then
+                table.insert(wdata.metadata, child.node)
+            end
+        end
+        UpdateNodeNumCache(wdata)
     end
 
     function MetadataContent:OnModified()
-        print('OnModified')
+        self:Save()
+    end
+
+    function Main:OnMousePressed(keyCode)
+        if keyCode == MOUSE_RIGHT then
+            local menu = DermaMenu() 
+
+            local create = menu:AddOption('#fcmdu.create', function()
+                MetadataContent:Add(CreateNodeEditor({}))
+                MetadataContent:Save()
+            end)
+            create:SetImage('icon16/application_add.png')
+
+            local paste = menu:AddOption('#fcmdu.paste', function()
+                if not isstring(clipboard) then return end
+                local newnode = util.JSONToTable(clipboard)
+                if istable(newnode) then MetadataContent:Add(CreateNodeEditor(newnode)) end
+                MetadataContent:Save()
+            end)
+            paste:SetImage('materials/icon16/application_double.png')
+
+            menu:Open()
+        end
     end
 
     MetadataCategory:SetContents(MetadataContent)
 
-    // ciconinput:SetValue(strdefault(wdata.cicon, ''))
-    // arrow:SetValue(strdefault(wdata.arrow, ''))
-    // edge:SetValue(strdefault(wdata.edge, ''))
-    // rotate3d:SetValue(numdefault(wdata.rotate3d, 10))
-    // centersize:SetValue(numdefault(wdata.centersize, 0.5))
-    // iconsize:SetValue(numdefault(wdata.iconsize, 0.25))
-    // fade:SetValue(numdefault(wdata.fade, 100))
+    ciconinput:SetValue(strdefault(wdata.cicon, ''))
+    arrow:SetValue(strdefault(wdata.arrow, ''))
+    edge:SetValue(strdefault(wdata.edge, ''))
+    rotate3d:SetValue(numdefault(wdata.rotate3d, 10))
+    centersize:SetValue(numdefault(wdata.centersize, 0.5))
+    iconsize:SetValue(numdefault(wdata.iconsize, 0.25))
+    fade:SetValue(numdefault(wdata.fade, 100))
+    autoclip:SetState(wdata.autoclip)
 
-    // function ciconinput:OnValueChange(value)
-    //     // wdata.cache = wdata.cache or {}
-    //     wdata.cicon = value
-    //     wdata.cache.cicon = FcmdLoadMaterials(value, cicondefault)
-    // end
+    function ciconinput:OnValueChange(value)
+        wdata.cicon = value
+        wdata.cache.cicon = FcmdLoadMaterials(value, cicondefault)
+    end
 
-    // function arrow:OnValueChange(value)
-    //     wdata.arrow = value
-    //     wdata.cache.arrow = FcmdLoadMaterials(value, arrowdefault)
-    // end
+    function arrow:OnValueChange(value)
+        wdata.arrow = value
+        wdata.cache.arrow = FcmdLoadMaterials(value, arrowdefault)
+    end
 
-    // function edge:OnValueChange(value)
-    //     wdata.edge = value
-    //     wdata.cache.edge = FcmdLoadMaterials(value, edgedefault)
-    // end
+    function edge:OnValueChange(value)
+        wdata.edge = value
+        wdata.cache.edge = FcmdLoadMaterials(value, edgedefault)
+    end
 
-    // function rotate3d:OnValueChanged(value)
-    //     wdata.rotate3d = value
-    //     UpdateNumCache(wdata)
-    // end
+    function rotate3d:OnValueChanged(value)
+        wdata.rotate3d = value
+        UpdateNumCache(wdata)
+    end
 
-    // function centersize:OnValueChanged(value)
-    //     wdata.centersize = value
-    //     UpdateNumCache(wdata)
-    // end
+    function centersize:OnValueChanged(value)
+        wdata.centersize = value
+        UpdateNumCache(wdata)
+    end
 
-    // function iconsize:OnValueChanged(value)
-    //     wdata.iconsize = value
-    //     UpdateNumCache(wdata)
-    // end
+    function iconsize:OnValueChanged(value)
+        wdata.iconsize = value
+        UpdateNumCache(wdata)
+    end
 
-    // function fade:OnValueChanged(value)
-    //     wdata.fade = value
-    //     UpdateNumCache(wdata)
-    // end
+    function fade:OnValueChanged(value)
+        wdata.fade = value
+        UpdateNumCache(wdata)
+    end
 
-    // function autoclip:DoClick()
-    //     wdata.autoclip = not wdata.autoclip
-    //     self:SetText(wdata.autoclip and '#fcmdu.autoclip.on' or '#fcmdu.autoclip.off')
-    // end
+    function autoclip:Trigger(state)
+        wdata.autoclip = state
+    end
 
     ----
     return WheelDataEditor

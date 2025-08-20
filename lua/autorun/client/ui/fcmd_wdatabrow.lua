@@ -70,6 +70,29 @@ function FcmduCreateWheelDataBrowser(parent)
 		end)
 		apply:SetImage('materials/icon16/application_lightning.png')
 
+		local edit = menu:AddOption('#fcmdu.edit', function()
+			LocalPlayer():ConCommand(string.format('fcmdu_open_editor "%s"', filePath))
+		end)
+		edit:SetImage('materials/icon16/application_edit.png')
+
+		menu:AddSpacer()
+
+		local copy = menu:AddOption('#fcmdu.copy', function()
+			local succ, err = pcall(FcmdCopyJsonFile, filePath, filePath)
+			if not succ then 
+				ErrorNoHaltWithStack(err)
+			end
+			FileBrowser:Refresh()
+		end)
+		copy:SetImage('materials/icon16/application_double.png')
+
+		local copycontent = menu:AddOption('#fcmdu.copy_content', function() 
+			FcmdCopyJsonFileContent(filePath)
+		end)
+		copycontent:SetImage('materials/icon16/application_double.png')
+		
+		menu:AddSpacer()
+		
 		local rename = menu:AddOption('#fcmdu.rename', function()
 			local frame = vgui.Create('DFrame')
 			frame:SetSize(250, 100)
@@ -123,34 +146,17 @@ function FcmduCreateWheelDataBrowser(parent)
 		end)
 		rename:SetImage('materials/icon16/basket_edit.png')
 
-		menu:AddSpacer()
-
-		local copy = menu:AddOption('#fcmdu.copy', function()
-			local succ, err = pcall(FcmdCopyJsonFile, filePath, filePath)
-			if not succ then 
-				ErrorNoHaltWithStack(err)
-			end
-			FileBrowser:Refresh()
-		end)
-		copy:SetImage('materials/icon16/application_double.png')
-
-		local copycontent = menu:AddOption('#fcmdu.copy_content', function() 
-			FcmdCopyJsonFileContent(filePath)
-		end)
-		copycontent:SetImage('materials/icon16/application_double.png')
-		
-		menu:AddSpacer()
-		
-		local edit = menu:AddOption('#fcmdu.edit', function()
-			LocalPlayer():ConCommand('fcmdu_open_editor '..filePath)
-		end)
-		edit:SetImage('materials/icon16/application_edit.png')
-
 		local delete = menu:AddOption('#fcmdu.delete', function()
 			local succ, err = pcall(FcmdDeleteJsonFile, filePath)
 			if succ then 
 				succ = err
-				if succ then surface.PlaySound('Buttons.snd15') end
+				if succ then 
+					if GetConVar('cl_fcmd_wfile'):GetString() == filePath then
+						FcmdmClearCurWData()
+					end
+
+					surface.PlaySound('Buttons.snd15') 
+				end
 			else
 				ErrorNoHaltWithStack(err)
 			end
