@@ -1,5 +1,13 @@
 local Clamp = math.Clamp
 local pcall = pcall
+local ScrW, ScrH = ScrW, ScrH
+local min, max = math.min, math.max
+local sqrt = math.sqrt
+local cos, sin, atan2, asin = math.cos, math.sin, math.atan2, math.asin
+local gui = gui
+local Vector, Matrix, Angle = Vector, Matrix, Angle
+local draw, surface, hook = draw, surface, hook
+
 
 include('core/fcmd_wheel.lua')
 include('core/fcmd_execute.lua')
@@ -9,7 +17,7 @@ include('core/fcmd_filter.lua')
 local ExecuteCmd = FcmdExecuteCmd
 local ExecuteBreak = FcmdExecuteBreak
 local ExecuteCall = FcmdExecuteCall
-local DrawWheel = FcmdDrawWheel
+local DrawWheel2D = FcmdDrawWheel2D
 local CheckSelect = FcmdCheckSelect
 
 local cmdfilter = FcmdGetCmdFilter()
@@ -140,6 +148,67 @@ concommand.Add('+fcmdm_call', function(ply) ExecuteCurCall(true) end)
 concommand.Add('-fcmdm_call', function(ply) ExecuteCurCall(false) end)
 
 concommand.Add('fcmdm_break', function(ply) ExecuteCurBreak() end)
+
+local radunit = 180 / math.pi
+local zerovec, zeroang = Vector(), Angle()
+local startmartix = Matrix()
+startmartix:SetTranslation(Vector())
+startmartix:SetAngles(Angle(90, 0, -90))
+local function DrawWheel(size, wdata, state)
+	-- 绘制轮盘 并 运行Hook
+	local rootcache = wdata.cache 
+	local rotate3d = rootcache.rotate3d
+	if rotate3d > 0 then
+		state = max(state, 0)
+		local w, h = ScrW(), ScrH()
+		local cx, cy = w * 0.5, h * 0.5
+		
+		-- 计算变换矩阵
+		-- 这个Start3D2D用不明白, 只能用两次旋转合成了
+		local cammartix
+		if rootcache.selectIdx ~= nil then
+			local dx, dy = gui.MouseX() - cx, gui.MouseY() - cy
+			local dis = sqrt(dx * dx + dy * dy)
+			local sina, cosa = sin(rotate3d), cos(rotate3d)
+			local pitch = atan2(dx / dis * sina, cosa) * radunit
+			local roll = asin(dy / dis * sina) * radunit
+			local rotate = Matrix()
+			rotate:SetAngles(Angle(pitch, 0, roll))
+			cammartix = rotate * startmartix
+		else
+			cammartix = startmartix
+		end
+		local campos, camang = Vector(cx, -cy, 0) - cammartix:GetForward() * 1200, cammartix:GetAngles()
+
+		
+		local fade = rootcache.fade
+
+		draw.NoTexture()
+		-- 淡入黑色背景
+		surface.SetDrawColor(0, 0, 0, fade * state)
+		surface.DrawRect(0, 0, w, h)
+
+		local old = DisableClipping(true)
+		rootcache.fade = 0 -- 禁用2D的淡入绘制
+		
+		cam.Start3D(campos, camang, 60)
+			cam.Start3D2D(zerovec, zeroang, 1)
+				hook.Run('FcmdPreDrawWheel2D', size, wdata, state)
+				DrawWheel2D(size, wdata, state)
+				hook.Run('FcmdPostDrawWheel2D', size, wdata, state)
+			cam.End3D2D() 
+		cam.End3D()
+
+		rootcache.fade = fade -- 恢复数据
+		DisableClipping(old)
+	else
+		hook.Run('FcmdPreDrawWheel2D', size, wdata, state)
+		DrawWheel2D(size, wdata, state)
+		hook.Run('FcmdPostDrawWheel2D', size, wdata, state)
+	end
+end
+FcmdmDrawWheel = DrawWheel
+
 -----------------------------
 local expandKey = false
 local function ExpandKeyEvent()
