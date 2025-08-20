@@ -4,7 +4,7 @@ include('ui/fcmd_soundbrow.lua')
 include('ui/fcmd_editor.lua')
 include('ui/fcmd_widget.lua')
 
-concommand.Add('fcmd_version', function() print('test') end)
+concommand.Add('fcmd_version', function() print('1.0.0') end)
 
 local convars = {
 	cl_fcmd_wheel_size = 500,
