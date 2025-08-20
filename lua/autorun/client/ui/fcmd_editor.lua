@@ -49,8 +49,8 @@ end
 
 local function UpdateNumCache(wdata)
     -- 用于更新高耦合的参数
-    wdata.metadata = metadata
-    wdata.cache = rootcache
+    local metadata = wdata.metadata
+    local rootcache = wdata.cache
 
 	local angbound = math.min(
 		math.pi * 2 / math.max(#metadata, 1) * math.max(numdefault(wdata.iconsize, 0.5), 0), 
