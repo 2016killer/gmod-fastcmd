@@ -1,3 +1,11 @@
+local function strdefault(str, default)
+	return isstring(str) and str or default
+end
+
+local function numdefault(num, default)
+	return isnumber(num) and num or default
+end
+
 function FcmduCreateCustomGrid(parent, layout)
     -- 固定行高、自动行间距、自动列宽
 	-- 并不支持大量添加控件, 代价是O(n^2)
@@ -299,6 +307,86 @@ function FcmduCreateMaterialInput(txt, parent)
 
 	function Body:OnRemove()
 		if IsValid(MaterialsBrowser) then MaterialsBrowser:Remove() end
+	end
+
+	return Body
+end
+
+
+function FcmduCmdInput(txt, parent)
+	local Body = FcmduCreateAdvancedInput(txt, '#fcmdu.debug', parent)
+
+	function Body:DoClick()
+		FcmdExecuteCmd(Body:GetValue(), FcmdFilter)
+	end
+
+	return Body
+end
+
+function FcmduCmdInput2(txt, parent, origin)
+	-- 带有自动解析功能
+	local Body = FcmduCreateAdvancedInput(txt, '', parent) 
+	local DebugBtn = vgui.Create('DButton', Body)
+	
+	Body.layout = {0.2, 0, 0.6, 0.2}
+	Body.childs = {Body.childs[1], Body.childs[2], Body.childs[3], DebugBtn}
+	Body:RefreshLayout()
+
+	DebugBtn:SetText('#fcmdu.debug')
+
+	local SetTextValue = Body.SetValue
+	function Body:SetValue(value)
+		if isstring(value) then
+			SetTextValue(self, value)
+			self:SetExpand(true)
+		else
+			self:SetExpand(false)
+		end
+	end	
+
+	local GetTextValue = Body.GetValue
+	function Body:GetValue()
+		if self.expand then
+			return GetTextValue(self)
+		else
+			return nil
+		end
+	end
+
+	function Body:SetExpand(state)
+		self.expand = state
+		if state then
+			self:SetButtonText('#fcmdu.auto')
+			self.layout[2] = 0.4
+			self.childs[2]:SetVisible(true)
+
+			self.layout[3] = 0.2
+		else
+			self:SetButtonText('#fcmdu.manual')
+			self.layout[2] = 0
+			self.childs[2]:SetVisible(false)
+
+			self.layout[3] = 0.6
+			if isfunction(self.OnValueChange) then self:OnValueChange(nil) end
+		end
+
+		self:RefreshLayout()
+	end
+
+	function DebugBtn:DoClick()
+		if Body.expand then
+			FcmdExecuteCmd(GetTextValue(Body), FcmdFilter)
+		elseif IsValid(origin) then  
+			FcmdExecuteCmd(FcmdAutoParseRexecute(origin:GetValue()), FcmdFilter)
+		end
+	end
+
+	function Body:DoClick()
+		local state = not self.expand
+		self:SetExpand(state)
+		if isfunction(self.Trigger) then
+			self:Trigger(state)
+		end
 	end
 
 	return Body

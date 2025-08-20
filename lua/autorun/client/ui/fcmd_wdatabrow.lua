@@ -206,6 +206,7 @@ concommand.Add('fcmdu_open_wheel_wdatabrow', function()
 	frame:MakePopup()
 	frame:SetSize(500, 500)
 	frame:Center()
+	frame:SetDeleteOnClose(true)
 	FcmduCreateWheelDataBrowser(frame)
 end)
 

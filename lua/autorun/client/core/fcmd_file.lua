@@ -15,6 +15,14 @@ local function isjsonpath(filename)
 	local len = #filename
 	return len >= 5 and string.lower(string.sub(filename, len - 4, len)) == '.json'
 end
+
+local function shallowcopy(tbl)
+	local result = {}
+	for i, v in pairs(tbl) do 
+		result[i] = v 
+	end
+	return result
+end
 ------------------------------
 function FcmdLoadMaterials(path, failed)
 	-- 加载游戏目录的材质或插件封面
@@ -146,14 +154,21 @@ function FcmdDumpsWheelData2JSON(wdata)
 		return nil
 	end
 
-	wdata.cache = nil
-	if istable(wdata.metadata) then
-		for _, node in pairs(wdata.metadata) do
-			node.cache = nil
+	local wdatacopy = shallowcopy(wdata)
+	wdatacopy.cache = nil
+
+	local metadatacopy = shallowcopy(wdatacopy.metadata)
+	wdatacopy.metadata = metadatacopy
+	if istable(metadatacopy) then
+		for i, node in pairs(metadatacopy) do
+			local nodecopy = shallowcopy(node)
+			nodecopy.cache = nil
+
+			metadatacopy[i] = nodecopy
 		end
 	end
 
-	return util.TableToJSON(wdata, true)
+	return util.TableToJSON(wdatacopy, true)
 end
 ------------------------------ 
 function FcmdLoadWheelData(filepath)

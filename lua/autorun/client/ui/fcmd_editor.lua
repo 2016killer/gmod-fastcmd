@@ -4,13 +4,21 @@ include('../core/fcmd_wheel.lua')
 local DrawWheel2D = FcmdDrawWheel2D
 local DrawBounds = FcmdDrawBounds
 -------------------------
-local background = Color(255, 255, 255, 200)
+local background = Color(255, 255, 255, 100)
 local background2 = Color(100, 100, 100, 200)
 local textcolor = Color(0, 0, 0, 255)
 local cicondefault = Material('fastcmd/hud/cicon.png')
 local arrowdefault = Material('fastcmd/hud/arrow.png')
 local icondefault = Material('fastcmd/hud/default.jpg')
 local edgedefault = Material('fastcmd/hud/edge.png')
+
+local function shallowcopy(tbl)
+	local result = {}
+	for i, v in pairs(tbl) do 
+		result[i] = v 
+	end
+	return result
+end
 
 local function SetMaterial(mat)
 	if istable(mat) then
@@ -137,10 +145,10 @@ local function CreateNodeEditor(node)
         }
     )
     CmdContent:Dock(FILL)
-    local pexecuteinput = FcmduCreateTextEntry('#fcmdu.pexecute', CmdContent)
-	local rexecuteinput = FcmduPushPullInput('#fcmdu.rexecute', '#fcmdu.manual', '#fcmdu.auto', CmdContent)
-    local bexecuteinput = FcmduPushPullInput('#fcmdu.bexecute', '#fcmdu.manual', '#fcmdu.auto', CmdContent)
-    local sexecuteinput = FcmduCreateTextEntry('#fcmdu.sexecute', CmdContent)
+    local pexecuteinput = FcmduCmdInput('#fcmdu.pexecute', CmdContent)
+	local rexecuteinput = FcmduCmdInput2('#fcmdu.rexecute', CmdContent, pexecuteinput)
+    local bexecuteinput = FcmduCmdInput2('#fcmdu.bexecute', CmdContent, pexecuteinput)
+    local sexecuteinput = FcmduCmdInput('#fcmdu.sexecute', CmdContent)
     
     CmdContent:AddItem(pexecuteinput)
     CmdContent:AddItem(rexecuteinput)
@@ -167,39 +175,12 @@ local function CreateNodeEditor(node)
         node.call.pexecute = value
     end
 
-    -- 隐藏自动解析的指令
-    if isstring(node.call.rexecute) then
-        rexecuteinput:SetExpand(true)
-        rexecuteinput:SetValue(strdefault(node.call.rexecute, ''))
-    else
-        rexecuteinput:SetExpand(false)
-    end
-    function rexecuteinput:Trigger(state)
-        if state and isstring(node.call.pexecute) then
-            rexecuteinput:SetValue(FcmdAutoParseRexecute(node.call.pexecute))
-        else
-            node.call.rexecute = nil
-        end
-    end
+    rexecuteinput:SetValue(node.call.rexecute)
     function rexecuteinput:OnValueChange(value)
         node.call.rexecute = value
     end
 
-    -- 隐藏自动解析的指令
-    if isstring(node.call.bexecute) then
-        bexecuteinput:SetExpand(true)
-        bexecuteinput:SetValue(strdefault(node.call.bexecute, ''))
-    else
-        bexecuteinput:SetExpand(false)
-    end
-    function bexecuteinput:Trigger(state)
-        if state and isstring(node.call.pexecute) then
-            bexecuteinput:SetValue(FcmdAutoParseRexecute(node.call.pexecute))
-        else
-            node.call.bexecute = nil
-        end
-    end
-    bexecuteinput:SetValue(strdefault(node.call.bexecute, ''))
+    bexecuteinput:SetValue(node.call.bexecute)
     function bexecuteinput:OnValueChange(value)
         node.call.bexecute = value
     end
@@ -217,7 +198,7 @@ local function CreateNodeEditor(node)
             local menu = DermaMenu() 
 
             local copy = menu:AddOption('#fcmdu.copy', function()
-                local copynode = table.Copy(node)
+                local copynode = shallowcopy(node)
                 copynode.cache = nil 
                 clipboard = util.TableToJSON(copynode)
 
@@ -253,9 +234,7 @@ end
 local Opened = {}
 function FcmdOpenWheelDataEditor(filename)
     if IsValid(Opened[filename]) then 
-        local WheelDataEditor = Opened[filename]
-        WheelDataEditor:SetPos(10, 10)
-        WheelDataEditor:SetVisible(true)
+        Opened[filename]:SetVisible(true)
         return 
     end
 
@@ -271,16 +250,23 @@ function FcmdOpenWheelDataEditor(filename)
     WheelDataEditor:SetPos(10, 10)
 	WheelDataEditor:SetSizable(true)
 	WheelDataEditor:MakePopup()
-	WheelDataEditor:SetDeleteOnClose(true)
+    WheelDataEditor:SetDeleteOnClose(false)
 
-	function WheelDataEditor:OnRemove()
+    function WheelDataEditor:Save()
         if istable(wdata) then
             FcmdSaveWheelData(wdata, filename, true)
             if GetConVar('cl_fcmd_wfile'):GetString() == filename then
                 FcmdmReloadCurWData()
             end
         end
+    end
 
+    function WheelDataEditor:OnClose()
+        self:Save()
+    end
+
+	function WheelDataEditor:OnRemove()
+        self:Save()
         Opened[filename] = nil
 	end
 
@@ -288,7 +274,12 @@ function FcmdOpenWheelDataEditor(filename)
 	local ViewPort = vgui.Create('DPanel', WheelDataEditor)
 	local Main = vgui.Create('DScrollPanel', WheelDataEditor)
 	local div = vgui.Create('DHorizontalDivider', WheelDataEditor)
-	
+    local SaveBtn = vgui.Create('DButton', WheelDataEditor)
+    
+    SaveBtn:SetText('#fcmdu.save_and_remove')
+    SaveBtn:SetTall(50)
+	SaveBtn:Dock(BOTTOM)
+    SaveBtn:DockMargin(0, 10, 0, 10)
 	div:Dock(FILL)
 	div:SetLeft(ViewPort)
 	div:SetRight(Main)
@@ -297,8 +288,15 @@ function FcmdOpenWheelDataEditor(filename)
 	div:SetRightMin(20)
 	div:SetLeftWidth(250)
 
+    function SaveBtn:DoClick()
+        WheelDataEditor:Save()
+        WheelDataEditor:Remove()
+    end
+
+
 	function ViewPort:Paint(w, h)
 		draw.RoundedBox(5, 0, 0, w, h, background)
+        // PrintTable(wdata)
 		if istable(wdata) then
 			local succ = SafeDrawWheel2D(
 				self.size, 
@@ -408,7 +406,7 @@ function FcmdOpenWheelDataEditor(filename)
     end
 
     function MetadataContent:Save()
-        local children = MetadataContent:GetChildren()
+        local children = self:GetChildren()
         wdata.metadata = {}
         for _, child in ipairs(children) do
             if istable(child.node) then
