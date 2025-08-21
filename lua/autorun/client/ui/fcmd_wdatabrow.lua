@@ -132,6 +132,9 @@ function FcmduCreateWheelDataBrowser(parent)
 					file.Rename(filePath, newpath)
 					frame:Remove()
 					FileBrowser:Refresh()
+					if GetConVar('cl_fcmdm_wfile'):GetString() == filePath then
+						FcmdmLoadCurWData(newpath)
+					end
 				end
 			end
 
