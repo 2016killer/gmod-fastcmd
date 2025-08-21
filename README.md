@@ -1,3 +1,4 @@
+https://steamcommunity.com/sharedfiles/filedetails/?id=3553077125
 # Gmod 快速指令插件文档
 ![1](img1.jpg)
 ![2](img2.jpg)
