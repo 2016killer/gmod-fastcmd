@@ -240,6 +240,7 @@ function FcmdOpenWheelDataEditor(filename)
 
 	local wdata = FcmdLoadWheelData(filename)
 	if not istable(wdata) then return end
+    wdata.cache.selectIdx = 1
 
 	-- 编辑器窗口定义
     Opened[filename] = vgui.Create('DFrame')
