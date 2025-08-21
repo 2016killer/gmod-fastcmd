@@ -86,6 +86,7 @@ local function ExpandWheel(state)
 			if istable(curcall) then ExecuteCmd(curcall.sexecute) end
 		end
 		curwdata.cache.selectIdx = nil
+		hook.Run('FcmdmWheelSelectChange', curwdata, nil, nil)
 	end
 end
 
@@ -276,7 +277,6 @@ concommand.Add('fcmdm_add_hook', function(ply, cmd, args)
 
 		-- 选中变化 (播放音效并触发事件)
 		if rootcache.selectIdx ~= selectIdx then
-			hook.Run('FcmdmWheelSelectChange', curwdata, selectIdx, curwdata.metadata[selectIdx])
 			if selectIdx == nil or selectIdx == 0 then
 				if isstring(curwdata.soundgiveup) and curwdata.soundgiveup ~= '' then
 					surface.PlaySound(curwdata.soundgiveup)
@@ -290,6 +290,7 @@ concommand.Add('fcmdm_add_hook', function(ply, cmd, args)
 					surface.PlaySound('fastcmd/zoomin.wav')
 				end
 			end
+			hook.Run('FcmdmWheelSelectChange', curwdata, selectIdx, curwdata.metadata[selectIdx])
 		end
 		rootcache.selectIdx = selectIdx
 	end)
