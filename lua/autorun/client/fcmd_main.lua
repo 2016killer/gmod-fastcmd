@@ -272,7 +272,7 @@ concommand.Add('fcmdm_add_hook', function(ply, cmd, args)
 
 		-- 选中变化 (播放音效并触发事件)
 		if rootcache.selectIdx ~= selectIdx then
-			hook.Run('FcmdmSelect', curwdata, selectIdx, curwdata.metadata[selectIdx])
+			hook.Run('FcmdmWheelSelect', curwdata, selectIdx, curwdata.metadata[selectIdx])
 			if selectIdx == nil or selectIdx == 0 then
 				if isstring(curwdata.soundgiveup) and curwdata.soundgiveup ~= '' then
 					surface.PlaySound(curwdata.soundgiveup)
