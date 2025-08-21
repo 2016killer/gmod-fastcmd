@@ -40,9 +40,11 @@ local function ExecuteCurBreak()
 end
 
 local function GetCurCall() return curcall end
-local function SetCurCall(target) 
-	if istable(target) then target.press = nil end -- 重置按下状态, 防止切换后第一次是弹起
-	if curcall ~= target then ExecuteCurBreak() end
+local function SetCurCall(target)
+	if curcall ~= target then 
+		if istable(target) then target.press = nil end -- 重置按下状态, 防止切换后第一次是弹起
+		ExecuteCurBreak() 
+	end
 	curcall = target 
 end
 
