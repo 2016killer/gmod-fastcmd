@@ -35,6 +35,7 @@ local expand = false
 local function ExecuteCurBreak()
 	-- 执行中断命令
 	if not istable(curcall) then return end
+	hook.Run('FcmdmExecuteBreak', curcall, cmdfilter)
 	ExecuteBreak(curcall, cmdfilter)
 end
 
@@ -57,7 +58,8 @@ local function ExpandWheel(state)
 		expand = false
 		return 
 	end
-
+	
+	hook.Run('FcmdmExpandWheel', state)
 	gui.EnableScreenClicker(state)
 	expand = state
 	
@@ -89,6 +91,7 @@ local function ExecuteCurCall(state)
 	-- 展开ui时不执行
 	if expand or not istable(curcall) then return end
 	// PrintTable(curcall)
+	hook.Run('FcmdmExecuteCall', curcall, state, cmdfilter)
 	ExecuteCall(curcall, state, cmdfilter)
 end
 
