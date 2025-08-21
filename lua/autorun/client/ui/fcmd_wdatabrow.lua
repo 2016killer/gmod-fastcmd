@@ -151,7 +151,7 @@ function FcmduCreateWheelDataBrowser(parent)
 			if succ then 
 				succ = err
 				if succ then 
-					if GetConVar('cl_fcmd_wfile'):GetString() == filePath then
+					if GetConVar('cl_fcmdm_wfile'):GetString() == filePath then
 						FcmdmClearCurWData()
 					end
 

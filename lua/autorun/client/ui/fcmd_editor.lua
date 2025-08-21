@@ -255,7 +255,7 @@ function FcmdOpenWheelDataEditor(filename)
     function WheelDataEditor:Save()
         if istable(wdata) then
             FcmdSaveWheelData(wdata, filename, true)
-            if GetConVar('cl_fcmd_wfile'):GetString() == filename then
+            if GetConVar('cl_fcmdm_wfile'):GetString() == filename then
                 FcmdmReloadCurWData()
             end
         end

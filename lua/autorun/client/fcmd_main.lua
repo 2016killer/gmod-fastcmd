@@ -22,11 +22,11 @@ local CheckSelect = FcmdCheckSelect
 
 local cmdfilter = FcmdGetCmdFilter()
 -----------------------------
-local cl_fcmd_wheel_size = CreateClientConVar('cl_fcmd_wheel_size', '500', true, false)
+local cl_fcmdm_wheel_size = CreateClientConVar('cl_fcmdm_wheel_size', '500', true, false)
 local cl_fcmdm_expand_key = CreateClientConVar('cl_fcmdm_expand_key', '0', true, false)
-local cl_fcmd_call_key = CreateClientConVar('cl_fcmd_call_key', '0', true, false)
+local cl_fcmdm_call_key = CreateClientConVar('cl_fcmdm_call_key', '0', true, false)
 local cl_fcmdm_break_key = CreateClientConVar('cl_fcmdm_break_key', '0', true, false)
-local cl_fcmd_wfile = CreateClientConVar('cl_fcmd_wfile', 'fastcmd/wheel/chat.json', true, false)
+local cl_fcmdm_wfile = CreateClientConVar('cl_fcmdm_wfile', 'fastcmd/wheel/chat.json', true, false)
 -----------------------------
 local curcall
 local curwdata
@@ -103,18 +103,18 @@ FcmdmGetExpand = GetExpand
 FcmdmSetExpand = SetExpand
 
 function FcmdmLoadCurWData(filename)
-	LocalPlayer():ConCommand('cl_fcmd_wfile ""')
-	LocalPlayer():ConCommand(string.format('cl_fcmd_wfile "%s"', filename))
+	LocalPlayer():ConCommand('cl_fcmdm_wfile ""')
+	LocalPlayer():ConCommand(string.format('cl_fcmdm_wfile "%s"', filename))
 end
 
 function FcmdmReloadCurWData()
-	local filename = cl_fcmd_wfile:GetString()
-	LocalPlayer():ConCommand('cl_fcmd_wfile ""')
-	LocalPlayer():ConCommand(string.format('cl_fcmd_wfile "%s"', filename))
+	local filename = cl_fcmdm_wfile:GetString()
+	LocalPlayer():ConCommand('cl_fcmdm_wfile ""')
+	LocalPlayer():ConCommand(string.format('cl_fcmdm_wfile "%s"', filename))
 end
 
 function FcmdmClearCurWData()
-	LocalPlayer():ConCommand('cl_fcmd_wfile ""')
+	LocalPlayer():ConCommand('cl_fcmdm_wfile ""')
 end
 
 table.Merge(cmdfilter, {
@@ -125,7 +125,7 @@ table.Merge(cmdfilter, {
 	['fcmdm_break'] = true
 })
 
-cvars.AddChangeCallback('cl_fcmd_wfile', function(name, old, new) 
+cvars.AddChangeCallback('cl_fcmdm_wfile', function(name, old, new) 
 	local newdata
 	if new ~= '' then
 		newdata = FcmdLoadWheelData(new)
@@ -193,18 +193,18 @@ local function DrawWheel(size, wdata, state)
 		
 		cam.Start3D(campos, camang, 60)
 			cam.Start3D2D(zerovec, zeroang, 1)
-				hook.Run('FcmdPreDrawWheel2D', size, wdata, state)
+				hook.Run('FcmdmPreDrawWheel2D', size, wdata, state)
 				DrawWheel2D(size, wdata, state)
-				hook.Run('FcmdPostDrawWheel2D', size, wdata, state)
+				hook.Run('FcmdmPostDrawWheel2D', size, wdata, state)
 			cam.End3D2D() 
 		cam.End3D()
 
 		rootcache.fade = fade -- 恢复数据
 		DisableClipping(old)
 	else
-		hook.Run('FcmdPreDrawWheel2D', size, wdata, state)
+		hook.Run('FcmdmPreDrawWheel2D', size, wdata, state)
 		DrawWheel2D(size, wdata, state)
-		hook.Run('FcmdPostDrawWheel2D', size, wdata, state)
+		hook.Run('FcmdmPostDrawWheel2D', size, wdata, state)
 	end
 end
 FcmdmDrawWheel = DrawWheel
@@ -225,7 +225,7 @@ end
 local callKey = false
 local function CallKeyEvent()
 	-- 执行键事件 (有绑定时边沿触发)
-	local key = cl_fcmd_call_key:GetInt()
+	local key = cl_fcmdm_call_key:GetInt()
 	if key == 0 then return end
 	local current = input.IsKeyDown(key) or input.IsMouseDown(key)
 	if callKey ~= current then 
@@ -246,8 +246,8 @@ local function BreakKeyEvent()
 	breakKey = current
 end
 
-concommand.Add('fcmd_add_hook', function(ply, cmd, args)
-	hook.Add('Think', 'fcmd_think', function()
+concommand.Add('fcmdm_add_hook', function(ply, cmd, args)
+	hook.Add('Think', 'fcmdm_think', function()
 		if not istable(curwdata) then return end
 
 		-- 按键事件
@@ -261,13 +261,13 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 		-- 检查选中
 		local rootcache = curwdata.cache
 		local selectIdx = CheckSelect(
-			rootcache.centersize * cl_fcmd_wheel_size:GetInt(), 
+			rootcache.centersize * cl_fcmdm_wheel_size:GetInt(), 
 			curwdata
 		)
 
 		-- 选中变化 (播放音效并触发事件)
 		if rootcache.selectIdx ~= selectIdx then
-			hook.Run('FcmdSelect', curwdata.metadata[selectIdx])
+			hook.Run('FcmdmSelect', curwdata.metadata[selectIdx])
 			if selectIdx == nil or selectIdx == 0 then
 				if isstring(curwdata.soundgiveup) and curwdata.soundgiveup ~= '' then
 					surface.PlaySound(curwdata.soundgiveup)
@@ -286,7 +286,7 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 	end)
 
 	local expandstate = 0
-	hook.Add('HUDPaint', 'fcmd_draw', function() 
+	hook.Add('HUDPaint', 'fcmdm_draw', function() 
 		if not istable(curwdata) then return end
 		if expand then
 			expandstate = Clamp(expandstate + 5 * RealFrameTime(), 0, 1)
@@ -298,7 +298,7 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 		end
 		
 		-- 使用多个全局渲染设置, 异常时必须着重处理
-		local succ, err = pcall(DrawWheel, cl_fcmd_wheel_size:GetInt(), curwdata, expandstate)
+		local succ, err = pcall(DrawWheel, cl_fcmdm_wheel_size:GetInt(), curwdata, expandstate)
 		
 		if not succ then	
 			render.ClearStencil()
@@ -306,8 +306,8 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 			render.OverrideColorWriteEnable(false)
 			gui.EnableScreenClicker(false)
 			
-			hook.Remove('Think', 'fcmd_think')
-			hook.Remove('HUDPaint', 'fcmd_draw')
+			hook.Remove('Think', 'fcmdm_think')
+			hook.Remove('HUDPaint', 'fcmdm_draw')
 
 			ErrorNoHaltWithStack(err)
 			FcmdError('#fcmdm.err.fatal', '#fcmdm.err.hook_die')
@@ -316,11 +316,11 @@ concommand.Add('fcmd_add_hook', function(ply, cmd, args)
 	end)
 end)
 
-hook.Add('KeyPress', 'fcmd_init', function(ply, key)
+hook.Add('KeyPress', 'fcmdm_init', function(ply, key)
 	if key == IN_FORWARD or key == IN_BACK then
-		LocalPlayer():ConCommand('fcmd_add_hook')
+		LocalPlayer():ConCommand('fcmdm_add_hook')
 		FcmdmReloadCurWData()
 		FcmdHelp('#fcmdm.help.use')
-		hook.Remove('KeyPress', 'fcmd_init')
+		hook.Remove('KeyPress', 'fcmdm_init')
 	end
 end)

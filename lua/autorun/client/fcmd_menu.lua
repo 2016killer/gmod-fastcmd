@@ -7,11 +7,11 @@ include('ui/fcmd_widget.lua')
 concommand.Add('fcmd_version', function() print('1.0.0') end)
 
 local convars = {
-	cl_fcmd_wheel_size = 500,
+	cl_fcmdm_wheel_size = 500,
 	cl_fcmdm_expand_key = 0,
-	cl_fcmd_call_key = 0,
+	cl_fcmdm_call_key = 0,
 	cl_fcmdm_break_key = 0,
-	cl_fcmd_wfile = 'fastcmd/wheel/chat.json',
+	cl_fcmdm_wfile = 'fastcmd/wheel/chat.json',
 	cl_fcmd_notify = 1
 }
 
@@ -38,14 +38,14 @@ hook.Add('PopulateToolMenu', 'fcmd_menu', function()
 				ctrl:AddOption('#preset.default', convars)
 				panel:AddPanel(ctrl)
 
-			panel:NumSlider(phrase('#fcmdu.wheel_size'), 'cl_fcmd_wheel_size', 0, 1000, 0)
+			panel:NumSlider(phrase('#fcmdu.wheel_size'), 'cl_fcmdm_wheel_size', 0, 1000, 0)
 
 			-- 按键绑定
 			panel:KeyBinder(
 				phrase('#fcmdu.expand_key'), 
 				'cl_fcmdm_expand_key', 
 				phrase('#fcmdu.call_key'),
-				'cl_fcmd_call_key'
+				'cl_fcmdm_call_key'
 			)
 			panel:KeyBinder(
 				phrase('#fcmdu.break_key'), 
@@ -53,7 +53,7 @@ hook.Add('PopulateToolMenu', 'fcmd_menu', function()
 			)
 
 
-			panel:TextEntry(phrase('#fcmdu.wfile'), 'cl_fcmd_wfile')
+			panel:TextEntry(phrase('#fcmdu.wfile'), 'cl_fcmdm_wfile')
 
 			-- 轮盘数据浏览器
 			local body = vgui.Create('DPanel', panel)
@@ -61,7 +61,7 @@ hook.Add('PopulateToolMenu', 'fcmd_menu', function()
 			body:SetHeight(250)
 			panel:AddItem(body)
 			
-			cvars.AddChangeCallback('cl_fcmd_wfile', function(name, old, new) 
+			cvars.AddChangeCallback('cl_fcmdm_wfile', function(name, old, new) 
 				WheelDataBrowser:Refresh()
 			end, 'bbb')
 			
@@ -72,11 +72,11 @@ hook.Add('PopulateToolMenu', 'fcmd_menu', function()
 				if WheelDataBrowser.selectFile then
 					LocalPlayer():ConCommand(string.format('fcmdu_open_editor "%s"', WheelDataBrowser.selectFile))
 				else
-					LocalPlayer():ConCommand(string.format('fcmdu_open_editor "%s"', GetConVar('cl_fcmd_wfile'):GetString()))
+					LocalPlayer():ConCommand(string.format('fcmdu_open_editor "%s"', GetConVar('cl_fcmdm_wfile'):GetString()))
 				end
 			end
 
-			panel:Button(phrase('#fcmdu.add_hook'), 'fcmd_add_hook')
+			panel:Button(phrase('#fcmdu.add_hook'), 'fcmdm_add_hook')
 			panel:CheckBox(phrase('#fcmdu.notify'), 'cl_fcmd_notify')
 		end
 	)
