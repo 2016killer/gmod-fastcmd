@@ -44,14 +44,18 @@ local function SetCurCall(target)
 	if curcall ~= target then 
 		if istable(target) then target.press = nil end -- 重置按下状态, 防止切换后第一次是弹起
 		ExecuteCurBreak() 
+		hook.Run('FcmdmCurCallChange', curcall, target)
+		curcall = target 
 	end
-	curcall = target 
 end
 
 local function GetCurWData() return curwdata end
 local function SetCurWData(target) 
-	curwdata = target 
-	SetCurCall(nil)
+	if curwdata ~= target then
+		hook.Run('FcmdmCurWDataChange', curwdata, target)
+		curwdata = target 
+		SetCurCall(nil)
+	end
 end
 
 local function ExpandWheel(state)
@@ -272,7 +276,7 @@ concommand.Add('fcmdm_add_hook', function(ply, cmd, args)
 
 		-- 选中变化 (播放音效并触发事件)
 		if rootcache.selectIdx ~= selectIdx then
-			hook.Run('FcmdmWheelSelect', curwdata, selectIdx, curwdata.metadata[selectIdx])
+			hook.Run('FcmdmWheelSelectChange', curwdata, selectIdx, curwdata.metadata[selectIdx])
 			if selectIdx == nil or selectIdx == 0 then
 				if isstring(curwdata.soundgiveup) and curwdata.soundgiveup ~= '' then
 					surface.PlaySound(curwdata.soundgiveup)
