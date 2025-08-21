@@ -173,3 +173,5 @@ function FcmdCheckSelect(size, wdata)
 
 	return 0
 end
+
+FcmdElasticity = Elasticity
