@@ -1,4 +1,4 @@
-include('fcmd_notify.lua')
+include('fcmd/core/fcmd_notify.lua')
 
 local cicondefault = Material('fastcmd/hud/cicon.png')
 local arrowdefault = Material('fastcmd/hud/arrow.png')

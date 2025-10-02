@@ -1,9 +1,3 @@
-include('ui/fcmd_wdatabrow.lua')
-include('ui/fcmd_matbrow.lua')
-include('ui/fcmd_soundbrow.lua')
-include('ui/fcmd_editor.lua')
-include('ui/fcmd_widget.lua')
-
 concommand.Add('fcmd_version', function() print('1.0.0') end)
 
 local convars = {

@@ -1,6 +1,6 @@
 min, max = math.min, math.max
 surface = surface
-include('../core/fcmd_wheel.lua') 
+include('fcmd/core/fcmd_wheel.lua') 
 local DrawWheel2D = FcmdDrawWheel2D
 local DrawBounds = FcmdDrawBounds
 -------------------------

@@ -9,10 +9,10 @@ local Vector, Matrix, Angle = Vector, Matrix, Angle
 local draw, surface, hook = draw, surface, hook
 
 
-include('core/fcmd_wheel.lua')
-include('core/fcmd_execute.lua')
-include('core/fcmd_file.lua')
-include('core/fcmd_filter.lua')
+include('fcmd/core/fcmd_wheel.lua')
+include('fcmd/core/fcmd_execute.lua')
+include('fcmd/core/fcmd_file.lua')
+include('fcmd/core/fcmd_filter.lua')
 
 local ExecuteCmd = FcmdExecuteCmd
 local ExecuteBreak = FcmdExecuteBreak
